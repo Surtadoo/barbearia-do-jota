@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.02',
+  APP_VERSION: '1.0.03',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -563,15 +563,47 @@ function mostrarAtualizacao(versao, release, asset) {
     : 'Correções e melhorias nesta versão.';
   const link = asset ? asset.browser_download_url : release.html_url;
   $('btnAtualizar').textContent = '⬇️ Atualizar agora';
-  $('btnAtualizar').onclick = () => {
-    localStorage.removeItem(LS_UPDATE_PARA);
-    window.open(link, '_blank', 'noopener');
-  };
+  $('btnAtualizar').onclick = () => baixarEInstalar(link);
   $('btnDepois').onclick = () => {
     localStorage.setItem(LS_UPDATE_PARA, String(Date.now()));
     $('modalUpdate').classList.add('hidden');
   };
   $('modalUpdate').classList.remove('hidden');
+}
+
+// ============================================================
+//  ATUALIZAR: baixa o APK e abre a instalação do Android
+// ============================================================
+function baixarEInstalar(url) {
+  if (!url) return;
+  localStorage.removeItem(LS_UPDATE_PARA);
+
+  const nativo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ApkUpdate;
+  if (!nativo) {
+    // no navegador: abre a pagina de download mesmo assim
+    window.open(url, '_blank', 'noopener');
+    return;
+  }
+
+  $('updNotas').textContent = 'Baixando a atualização. Ela será instalada em seguida...';
+  $('btnAtualizar').disabled = true;
+  $('btnAtualizar').textContent = '⏳ Baixando...';
+
+  nativo.instalar({ url })
+    .then(() => {
+      $('btnAtualizar').textContent = '📥 Abrir pasta de downloads';
+      $('btnAtualizar').disabled = false;
+      $('btnAtualizar').onclick = () => nativo.abrirDownloads().catch(() => {});
+      $('updNotas').textContent =
+        'Download iniciado. Se a instalação não abrir sozinha, toque no arquivo na pasta Downloads.';
+    })
+    .catch((e) => {
+      $('btnAtualizar').disabled = false;
+      $('btnAtualizar').textContent = '⬇️ Atualizar agora';
+      $('btnAtualizar').onclick = () => baixarEInstalar(url);
+      $('updNotas').textContent = 'Não consegui baixar agora: ' + (e && e.message ? e.message : 'erro')
+        + '. Tente de novo com a internet ligada.';
+    });
 }
 
 // ============================================================
