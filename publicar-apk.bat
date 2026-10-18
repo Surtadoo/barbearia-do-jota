@@ -117,7 +117,17 @@ if errorlevel 1 (
   echo       nada novo para enviar, segue em frente.
 )
 
-git push -u origin main
+REM ---------- pega o que ja esta no GitHub antes de mandar ----------
+echo       juntando com o que ja esta no GitHub...
+git pull --rebase origin main
+if errorlevel 1 (
+  echo       deu conflito, tentando unir sem rebase...
+  git rebase --abort >nul 2>&1
+  git pull origin main --allow-unrelated-histories -q
+)
+
+git push origin main
+if errorlevel 1 git push -u origin main
 if errorlevel 1 (
   echo.
   echo ==========================================================
@@ -126,14 +136,9 @@ if errorlevel 1 (
   echo.
   echo  "Repository not found" = endereco do repositorio errado.
   echo  "Authentication" ou "could not read Username" = falta login.
-  echo.
-  echo  Rode este comando UMA vez, na sua propria janela:
-  echo.
-  echo      cd /d "%RAIZ%"
-  echo      git push -u origin main
-  echo.
-  echo  Vai abrir o navegador: faca login e autorize.
-  echo  Depois volte aqui e rode o publicar-apk.bat de novo.
+  echo  "rejected ... fetch first" = o GitHub tem novidade.
+  echo     Rode:  git pull --rebase origin main
+  echo     Depois:  git push origin main
   echo.
   pause
   exit /b 1
