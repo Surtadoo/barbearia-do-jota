@@ -65,13 +65,12 @@ if /i not "%CONF%"=="s" (
 REM ---------- 3. sobe a versao no app.js e no build.gradle ----------
 echo.
 echo [1/4] Atualizando numero da versao...
-powershell -NoProfile -Command ^
-  "$p='%SITE%\app.js'; $t=[IO.File]::ReadAllText($p); $t=$t -replace \"APP_VERSION: '[^']*'\", \"APP_VERSION: '%NOVA%'\"; [IO.File]::WriteAllText($p,$t)"
-powershell -NoProfile -Command ^
-  "$p='%SITE%\android\app\build.gradle'; $t=[IO.File]::ReadAllText($p); $t=$t -replace 'versionName \"[^\"]*\"', 'versionName \"%NOVA%\"'; [IO.File]::WriteAllText($p,$t)"
-powershell -NoProfile -Command ^
-  "$p='%SITE%\android\app\build.gradle'; $t=[IO.File]::ReadAllText($p); $m=[regex]::Match($t,'versionCode (\d+)'); if($m.Success){ $n=[int]$m.Groups[1].Value+1; $t=$t -replace 'versionCode \d+', ('versionCode '+$n); [IO.File]::WriteAllText($p,$t); Write-Host ('      codigo: '+$n) }"
-echo       site: v%NOVA%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%RAIZ%\subir-versao.ps1" %NOVA%
+if errorlevel 1 (
+  echo [ERRO] Nao consegui mudar a versao. Veha a mensagem acima.
+  pause
+  exit /b 1
+)
 
 REM ---------- 4. sincroniza e gera o APK ----------
 echo.
@@ -110,7 +109,6 @@ if not exist "%RAIZ%\.git" (
   git init -q
   git branch -M main
 )
-git add -A -f backend site-barbearia *.md *.bat 2>nul
 git -c core.quotepath=false add -A
 set /p MSG="   Mensagem da mudanca (ex: 'Corrigido o Pix'): "
 if "%MSG%"=="" set MSG=Atualizacao %NOVA%
@@ -122,14 +120,21 @@ if errorlevel 1 (
 git push -u origin main
 if errorlevel 1 (
   echo.
-  echo [ERRO] Nao consegui mandar para o GitHub.
-  echo Se for a primeira vez, rode estes comandos uma vez so:
+  echo ==========================================================
+  echo   NAO CONSEGUI ENVIAR PARA O GITHUB
+  echo ==========================================================
   echo.
-  echo     cd /d "%RAIZ%"
-  echo     git remote add origin https://github.com/SEU-USUARIO/SEU-REPO.git
-  echo     git push -u origin main
+  echo  "Repository not found" = endereco do repositorio errado.
+  echo  "Authentication" ou "could not read Username" = falta login.
   echo.
-  echo Depois rode este arquivo de novo.
+  echo  Rode este comando UMA vez, na sua propria janela:
+  echo.
+  echo      cd /d "%RAIZ%"
+  echo      git push -u origin main
+  echo.
+  echo  Vai abrir o navegador: faca login e autorize.
+  echo  Depois volte aqui e rode o publicar-apk.bat de novo.
+  echo.
   pause
   exit /b 1
 )
@@ -146,7 +151,7 @@ if errorlevel 1 (
   echo O comando "gh" nao estava disponivel, entao a release nao foi criada sozinha.
   echo Crie na mao pelo site:
   echo.
-  echo     https://github.com/SEU-USUARIO/SEU-REPO/releases/new
+  echo     https://github.com/Surtadoo/barbearia-do-jota/releases/new
   echo
   echo   - Tag:               v%NOVA%
   echo   - Titulo:            Barbearia do Jota v%NOVA%
