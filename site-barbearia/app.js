@@ -1,13 +1,12 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.01',
+  APP_VERSION: '1.0.02',
 
   // Repositório do GitHub onde os APK são publicados.
-  // Deixe vazio para o popup de atualização não aparecer.
-  // Exemplo: { user: 'seu-usuario', repo: 'barbearia-do-jota' }
-  GITHUB_USER: '',
-  GITHUB_REPO: '',
+  // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
+  GITHUB_USER: 'Surtadoo',
+  GITHUB_REPO: 'barbearia-do-jota',
 
   BARBER_NAME: 'Barbearia do Jota',
   BARBER_ADDRESS: 'Rua Javata, 1506 - Anchieta',
@@ -483,8 +482,38 @@ async function buscarUltimaVersao() {
   if (!r) return null;
   const url = `https://api.github.com/repos/${encodeURIComponent(r.user)}/${encodeURIComponent(r.repo)}/releases/latest`;
   const resp = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
+  if (resp.status === 404) {
+    throw new Error('repositório não encontrado ou privado (404)');
+  }
+  if (resp.status === 403) {
+    throw new Error('limite de consultas do GitHub atingido (403)');
+  }
   if (!resp.ok) throw new Error(`GitHub respondeu ${resp.status}`);
   return await resp.json();
+}
+
+// explica o que precisa fazer quando o GitHub nao responde
+function explicarErroGithub(erro, silencioso) {
+  const msg = erro && erro.message ? erro.message : String(erro);
+  const r = repoSalvo();
+  const alvo = r ? `${r.user}/${r.repo}` : '(vazio)';
+
+  if (/404/.test(msg)) {
+    return 'Não achei o repositório ' + alvo + '.\n'
+      + 'Ele precisa ser PÚBLICO no GitHub:\n'
+      + 'Settings → Danger Zone → Change visibility → Public.\n'
+      + 'E precisa existir uma Release (tag v1.0.0 ou maior).';
+  }
+  if (/403/.test(msg)) {
+    return 'O GitHub bloqueou por excesso de consultas.\nTente de novo em alguns minutos.';
+  }
+  if (/Failed to fetch|NetworkError/i.test(msg)) {
+    return 'O celular está sem internet.\nAs atualizações só funcionam com internet.';
+  }
+  if (!r) {
+    return 'Nenhum repositório configurado.\\nPreencha em ⚙️ → Repositório do GitHub.';
+  }
+  return msg;
 }
 
 async function checarAtualizacao({ silencioso = true } = {}) {
@@ -506,8 +535,23 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     return nova;
   } catch (e) {
     console.warn('[update] nao consegui checar:', e.message);
+    if (!silencioso) mostrarAvisoUpdate(explicarErroGithub(e, silencioso));
     return null;
   }
+}
+
+// popup de aviso de problema (sem ser o de "atualizacao disponivel")
+function mostrarAvisoUpdate(texto) {
+  $('updVersao').textContent = 'Não consegui procurar atualização';
+  $('updAtual').textContent = `Versão ${CONFIG.APP_VERSION}`;
+  $('updNotas').innerHTML = String(texto).replace(/</g, '&lt;').replace(/\n/g, '<br>');
+  $('btnAtualizar').onclick = () => {
+    const r = repoSalvo();
+    if (r) window.open(`https://github.com/${r.user}/${r.repo}/releases`, '_blank', 'noopener');
+  };
+  $('btnAtualizar').textContent = '🔗 Abrir o GitHub';
+  $('btnDepois').onclick = () => $('modalUpdate').classList.add('hidden');
+  $('modalUpdate').classList.remove('hidden');
 }
 
 function mostrarAtualizacao(versao, release, asset) {
@@ -518,6 +562,7 @@ function mostrarAtualizacao(versao, release, asset) {
     ? notas.replace(/</g, '&lt;').replace(/\n/g, '<br>')
     : 'Correções e melhorias nesta versão.';
   const link = asset ? asset.browser_download_url : release.html_url;
+  $('btnAtualizar').textContent = '⬇️ Atualizar agora';
   $('btnAtualizar').onclick = () => {
     localStorage.removeItem(LS_UPDATE_PARA);
     window.open(link, '_blank', 'noopener');
@@ -594,7 +639,9 @@ async function salvarRepo() {
   const achou = await checarAtualizacao({ silencioso: false });
   $('updStatus').textContent = achou
     ? `Atualização ${achou} disponível!`
-    : `Você está na versão mais recente (${CONFIG.APP_VERSION}).`;
+    : (document.getElementById('modalUpdate').classList.contains('hidden')
+        ? `Você está na versão mais recente (${CONFIG.APP_VERSION}).`
+        : '');
 }
 
 // ---------- chamada ao backend ----------
