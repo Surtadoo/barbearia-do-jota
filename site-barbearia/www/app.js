@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.1.0',
+  APP_VERSION: '1.0.01',
 
   // Repositório do GitHub onde os APK são publicados.
   // Deixe vazio para o popup de atualização não aparecer.
