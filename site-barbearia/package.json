@@ -1,0 +1,16 @@
+{
+  "name": "barbearia-site",
+  "version": "1.0.0",
+  "description": "Site da barbearia para gerar APK com Capacitor",
+  "private": true,
+  "scripts": {
+    "build": "xcopy /E /I /Y www* www\\ 2>nul || echo www ja existe",
+    "android": "npx cap copy && npx cap sync android",
+    "open:android": "start android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  }
+}

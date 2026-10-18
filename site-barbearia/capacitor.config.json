@@ -1,0 +1,12 @@
+{
+  "appId": "com.barbeariadojota.app",
+  "appName": "Barbearia do Jota",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true,
+    "adjustMarginsForEdgeToEdge": "force"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

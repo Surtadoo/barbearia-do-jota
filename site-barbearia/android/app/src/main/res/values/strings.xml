@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Barbearia do Jota</string>
+    <string name="title_activity_main">Barbearia do Jota</string>
+    <string name="package_name">com.barbeariadojota.app</string>
+    <string name="custom_url_scheme">com.barbeariadojota.app</string>
+</resources>

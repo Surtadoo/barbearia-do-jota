@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Barbearia do Jota — Agendamento Online</title>
+<meta name="description" content="Escolha o corte, dia, hora e pague o sinal via Pix ou pague em dinheiro no local." />
+<link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand"><img src="logo.svg" alt="Barbearia do Jota" class="logo" /><div><strong>Barbearia do Jota</strong><span>Rua Javata, 1506 - Anchieta</span></div></div>
+    <nav>
+      <a href="#sobre">Sobre</a>
+      <a href="#chegar">Como chegar</a>
+      <button id="btnAjustes" class="nav-ico" aria-label="Ajustes" title="Ajustes">⚙</button>
+      <a href="#servicos" class="btn btn-gold btn-sm">Agendar</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <img src="logo.svg" alt="" aria-hidden="true" class="hero-bg" />
+  <div class="wrap hero-grid">
+    <div>
+      <div class="hero-title-wrapper">
+        <h1>Corte certo,<br>na hora certa.</h1>
+      </div>
+      <p class="muted">Escolha o corte, o dia do mês e a hora. Dinheiro confirma direto no WhatsApp. Pix pede sinal de R$ 10 via Pix para segurar a vaga (descontado do total).</p>
+      <div class="hero-actions">
+        <a href="#servicos" class="btn btn-gold">Agendar agora →</a>
+        <a href="#chegar" class="btn btn-ghost">📍 Como chegar</a>
+      </div>
+      <div class="hero-meta">
+        <div><strong>💵 Dinheiro</strong><span>vai direto pro WhatsApp</span></div>
+        <div><strong>⚡ Pix R$ 10</strong><span>sinal descontado do total</span></div>
+        <div><strong>📲 Vaga</strong><span>segurada após pagamento</span></div>
+      </div>
+    </div>
+    <div class="hero-card">
+      <h3>📅 Horários hoje</h3>
+      <p class="muted" id="todayLabel">—</p>
+      <div id="todaySlots" class="slots"></div>
+      <a href="#servicos" class="btn btn-green btn-block">Reservar horário</a>
+      <p class="tiny">Ter–Dom · 09h às 21h · Seg fechada</p>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+
+  <section id="sobre">
+    <div class="panel about">
+      <div class="about-text">
+        <h2>Sobre a barbearia</h2>
+        <p class="muted" id="aboutText"></p>
+        <p class="about-hours" id="aboutHours"></p>
+      </div>
+    </div>
+
+    <!-- Galeria de fotos da barbearia -->
+    <div class="carrossel" id="carrossel">
+      <button class="car-nav car-prev" id="carPrev" aria-label="Foto anterior">‹</button>
+      <div class="car-track" id="carTrack">
+        <figure class="car-item"><img src="img/foto1.jpeg" alt="Barbearia do Jota — foto 1" loading="lazy" /><figcaption>Barbearia do Jota</figcaption></figure>
+        <figure class="car-item"><img src="img/foto2.jpeg" alt="Barbearia do Jota — foto 2" loading="lazy" /><figcaption>Cortes modernos</figcaption></figure>
+        <figure class="car-item"><img src="img/foto3.jpeg" alt="Barbearia do Jota — foto 3" loading="lazy" /><figcaption>Barba na navalha</figcaption></figure>
+        <figure class="car-item"><img src="img/foto4.jpeg" alt="Barbearia do Jota — foto 4" loading="lazy" /><figcaption>Atendimento</figcaption></figure>
+        <figure class="car-item"><img src="img/foto5.jpeg" alt="Barbearia do Jota — foto 5" loading="lazy" /><figcaption>Detalhes do corte</figcaption></figure>
+        <figure class="car-item"><img src="img/foto6.jpeg" alt="Barbearia do Jota — foto 6" loading="lazy" /><figcaption>Ambiente</figcaption></figure>
+        <figure class="car-item"><img src="img/foto7.jpeg" alt="Barbearia do Jota — foto 7" loading="lazy" /><figcaption>Degradê</figcaption></figure>
+        <figure class="car-item"><img src="img/foto8.jpeg" alt="Barbearia do Jota — foto 8" loading="lazy" /><figcaption>Finalização</figcaption></figure>
+      </div>
+      <button class="car-nav car-next" id="carNext" aria-label="Próxima foto">›</button>
+      <div class="car-dots" id="carDots"></div>
+    </div>
+  </section>
+
+  <section id="chegar">
+    <div class="panel location">
+      <div class="loc-icon">📍</div>
+      <div class="loc-info">
+        <h2>Como chegar</h2>
+        <p class="muted" id="locAddress">Rua Javata, 1506 - Anchieta · Ter–Dom 09h–21h · Seg fechada</p>
+      </div>
+      <a id="btnMaps" href="#" target="_blank" class="btn btn-gold">Abrir no mapa →</a>
+    </div>
+  </section>
+
+  <div class="steps-bar" id="passos">
+    <div class="step-dot active" data-s="1"><span>1</span>Corte</div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-s="2"><span>2</span>Dia</div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-s="3"><span>3</span>Hora</div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-s="4"><span>4</span>Dados</div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-s="5"><span>5</span>Pix</div>
+  </div>
+
+  <!-- ETAPA 1: CORTE -->
+  <section id="servicos" class="step active">
+    <h2>Etapa 1 · Escolha o corte</h2>
+    <p class="muted">Toque para selecionar (pode escolher vários).</p>
+    <div id="servicesGrid" class="grid cards"></div>
+    <div class="step-nav">
+      <button id="btnNext1" class="btn btn-gold">Continuar →</button>
+    </div>
+  </section>
+
+  <!-- ETAPA 2: DIA -->
+  <section id="etapa-dia" class="step">
+    <h2>Etapa 2 · Escolha o dia do mês</h2>
+    <div class="panel">
+      <div class="cal-head">
+        <button id="calPrev" class="btn btn-ghost btn-sm">←</button>
+        <strong id="calTitle">—</strong>
+        <button id="calNext" class="btn btn-ghost btn-sm">→</button>
+      </div>
+      <div class="cal-week"><span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span></div>
+      <div id="daysRow" class="cal-grid"></div>
+    </div>
+    <div class="step-nav">
+      <button id="btnBack2" class="btn btn-ghost">← Voltar</button>
+      <button id="btnNext2" class="btn btn-gold">Continuar →</button>
+    </div>
+  </section>
+
+  <!-- ETAPA 3: HORA -->
+  <section id="etapa-hora" class="step">
+    <h2>Etapa 3 · Escolha a hora</h2>
+    <div class="panel">
+      <h3>Horários disponíveis</h3>
+      <div id="timesGrid" class="slots big"></div>
+      <p class="tiny" id="busyHint"></p>
+    </div>
+    <div class="step-nav">
+      <button id="btnBack3" class="btn btn-ghost">← Voltar</button>
+      <button id="btnNext3" class="btn btn-gold">Continuar →</button>
+    </div>
+  </section>
+
+  <!-- ETAPA 4: DADOS -->
+  <section id="etapa-dados" class="step">
+    <h2>Etapa 4 · Seus dados e pagamento</h2>
+    <div class="panel grid-2">
+      <div>
+        <label>Seu nome completo</label>
+        <input id="inpName" placeholder="Ex: Carlos Silva" autocomplete="name" />
+        <label>Seu WhatsApp (com DDD)</label>
+        <input id="inpPhone" placeholder="(21) 99077-2663" inputmode="tel" autocomplete="tel" />
+        <label>Observação (opcional)</label>
+        <input id="inpNote" placeholder="Ex: degradê baixo, pé marcado..." />
+
+        <label>Pagamento</label>
+        <div class="payopts">
+          <div class="payopt selected" data-pay="dinheiro">
+            <span class="pic">💵</span>
+            <div><b>Dinheiro no local</b><small>Confirma direto no WhatsApp</small></div>
+            <span class="radio">●</span>
+          </div>
+          <div class="payopt" data-pay="pix">
+            <span class="pic">⚡</span>
+            <div><b>Pix — sinal R$ 10,00</b><small>Descontado do total · confirma após pagamento</small></div>
+            <span class="radio">○</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="resume">
+        <h3>Resumo do agendamento</h3>
+        <p id="resumeService">✂️ —</p>
+        <p id="resumeWhen">📅 —</p>
+        <p id="resumeClient">👤 —</p>
+        <p class="total">Total: <strong id="resumePrice">R$ 0,00</strong></p>
+        <div id="resumeDiscount" class="hidden">
+          <p class="discount">Sinal Pix (desconto): <strong id="resumeSignalValue">− R$ 10,00</strong></p>
+          <p class="total rest">Restante no local: <strong id="resumeRest">R$ 0,00</strong></p>
+        </div>
+        <p class="tiny" id="resumeSignal">Pagamento total em dinheiro no local</p>
+
+        <div id="boxDinheiro">
+          <button id="btnMoney" class="btn btn-green btn-block">💬 Confirmar e enviar no WhatsApp →</button>
+          <p class="tiny">Vai abrir o WhatsApp da barbearia com o resumo completo para confirmação.</p>
+        </div>
+
+        <div id="boxPix" class="hidden">
+          <button id="btnNextPix" class="btn btn-gold btn-block">Gerar Pix de R$ 10 →</button>
+          <p class="tiny">Na próxima etapa você recebe o QR Code e o site confere o pagamento sozinho.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step-nav">
+      <button id="btnBack4" class="btn btn-ghost">← Voltar</button>
+    </div>
+  </section>
+
+  <!-- ETAPA 5: PAGAR O SINAL -->
+  <section id="etapa-pix" class="step">
+    <h2>Etapa 5 · Pague o sinal de R$ 10</h2>
+    <div class="panel">
+      <p class="muted" id="pixText2">Confira abaixo o pagamento do seu agendamento.</p>
+
+      <div id="pixPayBox" class="pixpay">
+        <div class="pixpay-grid">
+          <div class="pixpay-qr" id="pixQrBox">
+            <span class="qr-msg">⏳</span>
+          </div>
+          <div class="pixpay-info">
+            <p class="pixpay-valor">Sinal <strong id="pixValor">R$ 10,00</strong></p>
+
+            <div id="pixGerando">
+              <p class="pix-wait">⏳ Gerando seu Pix...</p>
+            </div>
+
+            <div id="pixPronto" class="hidden">
+              <p class="tiny">Abra o app do banco e escolha <b>Pix › Pagar com QR Code</b>. Aponte a câmera para o código ao lado, ou toque no botão:</p>
+              <a id="btnPagarAgora" class="btn btn-green btn-block" href="#" target="_blank" rel="noopener">💳 Pagar R$ 10,00 agora</a>
+              <button id="btnVerQr" class="btn btn-ghost btn-block">📷 Ver o QR Code grande</button>
+              <div class="copyrow">
+                <input id="pixCode" readonly />
+                <button id="btnCopyPix" class="btn btn-gold btn-sm">Copiar</button>
+              </div>
+              <p class="tiny">Não consegue escanear? Use o botão acima — abre a mesma página de pagamento.</p>
+              <p class="pix-wait" id="pixEspera">🔎 Conferindo o pagamento automaticamente...</p>
+            </div>
+
+            <div id="pixOffline" class="hidden">
+              <p class="tiny" id="pixOfflineMsg"></p>
+              <div class="copyrow hidden" id="pixManual">
+                <input id="pixChaveManual" readonly />
+                <button id="btnCopiarChave" class="btn btn-gold btn-sm">Copiar</button>
+              </div>
+              <p class="pix-debug hidden" id="pixDebug"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pix-actions">
+        <a id="btnFalarBarbearia" class="btn btn-ghost btn-block" href="#" target="_blank" rel="noopener">💬 Falar com a barbearia</a>
+      </div>
+
+      <div id="pixResultado" class="pix-resultado hidden">
+        <p id="pixResultadoTexto" class="muted"></p>
+        <button id="btnWppFinal" class="btn btn-green btn-block hidden">💬 Enviar agendamento no WhatsApp →</button>
+      </div>
+    </div>
+    <div class="step-nav">
+      <button id="btnBack5" class="btn btn-ghost">← Voltar</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- BOTÃO FLUTUANTE QUANDO VOLTAR AO SITE -->
+<div id="pixFloat" class="pix-float">
+  <p id="pixFloatText">Seu pagamento Pix foi confirmado! Enviar no WhatsApp?</p>
+  <button id="btnFloatWpp" class="btn-wpp">💬 Enviar no WhatsApp</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- ATUALIZAÇÃO DO APLICATIVO -->
+<div id="modalUpdate" class="modal hidden">
+  <div class="modal-card">
+    <div class="upd-icone">⬆️</div>
+    <h2 id="updVersao">Atualização disponível</h2>
+    <p class="tiny" id="updAtual">—</p>
+    <div class="upd-notas" id="updNotas"></div>
+    <button id="btnAtualizar" class="btn btn-green btn-block">⬇️ Atualizar agora</button>
+    <button id="btnDepois" class="btn btn-ghost btn-block">Depois</button>
+  </div>
+</div>
+
+<!-- AJUSTES: o barbeiro troca o endereco do servidor sem refazer o APK -->
+<div id="modalAjustes" class="modal hidden">
+  <div class="modal-card">
+    <h2>⚙️ Ajustes</h2>
+    <p class="tiny">Versão do aplicativo: <b id="appVersao">—</b></p>
+
+    <label>Servidor de pagamento</label>
+    <input id="inpServidor" placeholder="http://192.168.1.73:3001" inputmode="url" />
+    <p class="tiny" id="ajustesStatus">—</p>
+    <button id="btnTestarServidor" class="btn btn-ghost btn-block">🔌 Testar conexão</button>
+    <button id="btnSalvarServidor" class="btn btn-gold btn-block">Salvar servidor</button>
+
+    <label>Repositório do GitHub</label>
+    <input id="inpRepo" placeholder="seu-usuario/barbearia-do-jota" />
+    <p class="tiny" id="updStatus">—</p>
+    <button id="btnSalvarRepo" class="btn btn-ghost btn-block">💾 Salvar e procurar atualização</button>
+
+    <button id="btnFecharAjustes" class="btn btn-ghost btn-block">Fechar</button>
+  </div>
+</div>
+
+<!-- QR grande, para escanear com a câmera do celular -->
+<div id="modalQr" class="modal hidden">
+  <div class="modal-card">
+    <h2>📷 QR Code do Pix</h2>
+    <p class="tiny">Aponte a câmera do app do seu banco para este código.</p>
+    <div class="qr-grande"><img id="imgQrGrande" alt="QR Code Pix" /></div>
+    <a id="linkQrGrande" class="btn btn-green btn-block" href="#" target="_blank" rel="noopener">Abrir pagamento</a>
+    <button id="btnFecharQr" class="btn btn-ghost btn-block">Fechar</button>
+  </div>
+</div>
+
+<footer>
+  <p>💈 Barbearia do Jota · Rua Javata, 1506 - Anchieta · Ter–Dom 09h–21h · Seg fechada</p>
+</footer>
+
+<script src="app.js?v=11"></script>
+</body>
+</html>
