@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM ==========================================================
 REM  Publica uma versao nova do aplicativo no GitHub.
 REM
@@ -147,24 +147,16 @@ if errorlevel 1 (
 REM ---------- 6. cria a release com o APK ----------
 echo.
 echo [4/4] Criando a release v%NOVA% no GitHub...
-gh release create "v%NOVA%" "%RAIZ%\APK\Barbearia-do-Jota-v%NOVA%.apk" ^
-   --title "Barbearia do Jota v%NOVA%" ^
-   --notes "%MSG%" 2>nul
+powershell -NoProfile -ExecutionPolicy Bypass -File "%RAIZ%\publicar-release.ps1" -Versao "%NOVA%" -Apk "%RAIZ%\APK\Barbearia-do-Jota-v%NOVA%.apk" -Mensagem "%MSG%"
 
 if errorlevel 1 (
   echo.
-  echo O comando "gh" nao estava disponivel, entao a release nao foi criada sozinha.
-  echo Crie na mao pelo site:
+  echo O token do GitHub pode estar faltando ou vencido.
+  echo Crie um novo e salve em:  github-token.txt
+  echo Veja TOKEN-GITHUB.md na pasta do projeto.
   echo.
-  echo     https://github.com/Surtadoo/barbearia-do-jota/releases/new
-  echo
-  echo   - Tag:               v%NOVA%
-  echo   - Titulo:            Barbearia do Jota v%NOVA%
-  echo   - Anexar arquivo:    APK\Barbearia-do-Jota-v%NOVA%.apk
-  echo.
-  echo Sem a release o popup de atualizacao NAO aparece.
-) else (
-  echo       release criada!
+  pause
+  exit /b 1
 )
 
 echo.
@@ -173,7 +165,7 @@ echo   PUBLICADO: v%NOVA%
 echo.
 echo   Quem tem o app instalado vera o popup ao abrir.
 echo   Ele precisa estar no mesmo repositorio que esta
-echo   em Ajustos ^> Repositorio do GitHub.
+echo   em Ajustes ^> Repositorio do GitHub.
 echo ==========================================================
 echo.
 pause

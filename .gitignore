@@ -30,6 +30,10 @@ APK/
 backend/pagamentos.json
 backend/.env
 
+# token do GitHub (NAO pode ir para o repositorio)
+github-token.txt
+*.token
+
 # logs
 *.log
 servidor-erro.log
