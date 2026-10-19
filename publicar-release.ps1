@@ -54,9 +54,9 @@ if (-not (Test-Path $arqToken)) {
   if ($digitado -match '^(sair|S)$') { Falhar "Cancelado por voce."; exit 1 }
   $digitado = $digitado.Trim()
 
-  if ($digitado -notmatch '^gh[pousr]_[A-Za-z0-9]{10,}') {
+  if ($digitado -notmatch '^(gh[pousr]_|github_pat_)[A-Za-z0-9_\-]{10,}$') {
     Falhar "Isso nao parece um token do GitHub."
-    Write-Host "  Deve comecar com ghp_ seguido de letras e numeros."
+    Write-Host "  Deve comecar com ghp_ (classico) ou github_pat_ (refinado)."
     Write-Host "  Copie de novo la no GitHub e cole na proxima tela."
     exit 1
   }
