@@ -26,11 +26,46 @@ function Falhar($msg) {
 # ---------- 1. token ----------
 $arqToken = Join-Path $raiz 'github-token.txt'
 if (-not (Test-Path $arqToken)) {
-  Falhar "Nao achei o arquivo github-token.txt"
-  Write-Host "  Crie o arquivo github-token.txt na pasta do projeto e cole dentro dele"
-  Write-Host "  o token do GitHub. Veja TOKEN-GITHUB.md para saber como criar."
-  exit 1
+  Write-Host ""
+  Write-Host "  ======================================================" -ForegroundColor Yellow
+  Write-Host "   PRIMEIRA VEZ: preciso de um token do GitHub" -ForegroundColor Yellow
+  Write-Host "  ======================================================" -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "  1. Abra esta pagina no navegador:"
+  Write-Host "       https://github.com/settings/tokens/new" -ForegroundColor Cyan
+  Write-Host ""
+  Write-Host "  2. Preencha:"
+  Write-Host "       Note .............. PC da barbearia"
+  Write-Host "       Expiration ........ 90 days"
+  Write-Host "       Repository access . Only select repositories"
+  Write-Host "                          e escolha barbearia-do-jota"
+  Write-Host "       Permissions ....... Contents -> Read and write"
+  Write-Host ""
+  Write-Host "  3. Clique em Generate token e copie a chave (comeca com ghp_)"
+  Write-Host ""
+  Write-Host "  Vou abrir a pagina do GitHub. Depois cole a chave aqui."
+  Write-Host ""
+  try { Start-Process 'https://github.com/settings/tokens/new' } catch {}
+  Write-Host "  ----------------------------------------------------"
+  $digitado = Read-Host "  Cole o token aqui (ou SAIR para cancelar)"
+  Write-Host "  ----------------------------------------------------"
+  Write-Host ""
+
+  if ($digitado -match '^(sair|S)$') { Falhar "Cancelado por voce."; exit 1 }
+  $digitado = $digitado.Trim()
+
+  if ($digitado -notmatch '^gh[pousr]_[A-Za-z0-9]{10,}') {
+    Falhar "Isso nao parece um token do GitHub."
+    Write-Host "  Deve comecar com ghp_ seguido de letras e numeros."
+    Write-Host "  Copie de novo la no GitHub e cole na proxima tela."
+    exit 1
+  }
+
+  Set-Content -Path $arqToken -Value $digitado -NoNewline -Encoding ASCII
+  Write-Host "  Token salvo em github-token.txt (nao vai para o GitHub)." -ForegroundColor Green
+  Write-Host ""
 }
+
 $token = ([IO.File]::ReadAllText($arqToken)).Trim()
 if ($token.Length -lt 20) {
   Falhar "O token em github-token.txt parece invalido (curto demais)."
