@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.05',
+  APP_VERSION: '1.0.03',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -669,11 +669,13 @@ async function salvarRepo() {
   }
   $('updStatus').textContent = 'Procurando atualização...';
   const achou = await checarAtualizacao({ silencioso: false });
-  $('updStatus').textContent = achou
-    ? `Atualização ${achou} disponível!`
-    : (document.getElementById('modalUpdate').classList.contains('hidden')
-        ? `Você está na versão mais recente (${CONFIG.APP_VERSION}).`
-        : '');
+  if (achou) {
+    $('updStatus').textContent = `Atualização ${achou} disponível!`;
+  } else {
+    $('updStatus').textContent = document.getElementById('modalUpdate').classList.contains('hidden')
+      ? `Você está na versão mais recente (${CONFIG.APP_VERSION}).`
+      : 'Atualização disponível!';
+  }
 }
 
 // ---------- chamada ao backend ----------
@@ -1144,9 +1146,15 @@ window.addEventListener('load', () => {
   checkPixOnLoad();
   checarServidor();
   // procura versao nova no GitHub (silencioso: so mostra se existir)
-  setTimeout(() => checarAtualizacao({ silencioso: true }), 2500);
-  // e de novo a cada 6 horas, enquanto o app estiver aberto
-  setInterval(() => checarAtualizacao({ silencioso: true }), 6 * 60 * 60 * 1000);
+  setTimeout(() => checarAtualizacao({ silencioso: true }), 1000);
+  // e de novo a cada 10 minutos, enquanto o app estiver aberto
+  setInterval(() => checarAtualizacao({ silencioso: true }), 10 * 60 * 1000);
+  // ao voltar para o app (depois de ter saido), confere de novo
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      setTimeout(() => checarAtualizacao({ silencioso: true }), 500);
+    }
+  });
 });
 window.addEventListener('resize', ajustarTarjaDoTopo);
 window.addEventListener('orientationchange', ajustarTarjaDoTopo);
