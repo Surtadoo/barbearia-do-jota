@@ -25,15 +25,13 @@ pushd android
 call gradlew.bat assembleDebug --no-daemon
 popd
 
-if exist "..\..\APK" (
-  if not exist "..\..\APK" mkdir "..\..\APK"
-)
-copy /Y "android\app\build\outputs\apk\debug\app-debug.apk" "..\APK\Barbearia-do-Jota.apk" >nul
+if not exist "APK" mkdir "APK"
+copy /Y "android\app\build\outputs\apk\debug\app-debug.apk" "APK\Barbearia-do-Jota.apk" >nul
 
 echo.
 echo ==========================================================
-echo  PRONTO! O APK esta em:  ..\APK\Barbearia-do-Jota.apk
+echo  PRONTO! O APK esta em:  APK\Barbearia-do-Jota.apk
 echo ==========================================================
 echo.
-start "" "..\APK"
+start "" "APK"
 endlocal
