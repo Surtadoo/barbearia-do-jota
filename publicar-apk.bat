@@ -74,7 +74,7 @@ if errorlevel 1 (
 
 REM ---------- 4. sincroniza e gera o APK ----------
 echo.
-echo [2/4] Gerando o APK...
+echo [2/4] Sincronizando o site para a pasta www...
 copy /Y "%SITE%\index.html" "%SITE%\www\index.html" >nul
 copy /Y "%SITE%\app.js"     "%SITE%\www\app.js"     >nul
 copy /Y "%SITE%\styles.css" "%SITE%\www\styles.css" >nul

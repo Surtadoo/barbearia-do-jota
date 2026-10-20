@@ -16,6 +16,8 @@ echo ==========================================================
 echo.
 
 REM --- 1. servidor do Pix ---
+echo [0/2] (ja sincronizado acima)
+echo.
 echo [1/2] Ligando o servidor de pagamento Pix...
 if not exist "backend\node_modules" (
   echo       primeira vez: instalando dependencias...
@@ -25,6 +27,15 @@ if not exist "backend\node_modules" (
 )
 start "Barbearia - Servidor Pix" cmd /k "cd /d "%~dp0backend" && node server.js"
 timeout /t 4 /nobreak >nul
+
+REM --- sincroniza o site para a pasta www (para o APK) ---
+echo [1/2] Sincronizando o site para a pasta www...
+if not exist "site-barbearia\www" mkdir "site-barbearia\www"
+xcopy /Y /Q "site-barbearia\index.html" "site-barbearia\www\" >nul
+xcopy /Y /Q "site-barbearia\app.js"      "site-barbearia\www\" >nul
+xcopy /Y /Q "site-barbearia\styles.css"  "site-barbearia\www\" >nul
+xcopy /Y /Q "site-barbearia\logo.svg"    "site-barbearia\www\" >nul
+if exist "site-barbearia\img" xcopy /E /I /Y /Q "site-barbearia\img" "site-barbearia\www\img" >nul
 
 REM --- 2. site ---
 echo [2/2] Ligando o site...

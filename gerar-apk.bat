@@ -7,13 +7,13 @@ setlocal
 cd /d "%~dp0site-barbearia"
 
 echo.
-echo [1/3] Copiando o site para a pasta www...
+echo [1/3] Sincronizando o site para a pasta www...
 if not exist www mkdir www
 copy /Y index.html  www\index.html  >nul
 copy /Y app.js      www\app.js      >nul
 copy /Y styles.css  www\styles.css  >nul
 copy /Y logo.svg    www\logo.svg    >nul
-xcopy /E /I /Y /Q img www\img >nul
+if exist img xcopy /E /I /Y /Q img www\img >nul
 
 echo [2/3] Sincronizando com o Android...
 call npx.cmd cap sync android
