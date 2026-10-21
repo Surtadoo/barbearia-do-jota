@@ -528,7 +528,7 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     if (!versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
 
     const adiado = Number(localStorage.getItem(LS_UPDATE_PARA) || 0);
-    if (silencioso && adiado > Date.now() - 60 * 60 * 1000) return null;   // "Depois" lembra por 1 hora
+    if (silencioso && adiado > Date.now() - 5 * 60 * 1000) return null;   // "Depois" lembra por 5 minutos
 
     const asset = (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
     mostrarAtualizacao(nova, rel, asset);
@@ -565,6 +565,7 @@ function mostrarAtualizacao(versao, release, asset) {
   $('btnAtualizar').textContent = '⬇️ Atualizar agora';
   $('btnAtualizar').onclick = () => baixarEInstalar(link);
   $('btnDepois').onclick = () => {
+    // lembra por 1 hora, depois volta a aparecer
     localStorage.setItem(LS_UPDATE_PARA, String(Date.now()));
     $('modalUpdate').classList.add('hidden');
   };
@@ -618,17 +619,25 @@ function servidores() {
 }
 
 function abrirAjustes() {
-  $('inpServidor').value = localStorage.getItem(LS_SERVIDOR) || CONFIG.API_BASES[0];
-  $('inpRepo').value = localStorage.getItem(LS_REPO) || `${CONFIG.GITHUB_USER}/${CONFIG.GITHUB_REPO}`.replace(/^\//, '');
   $('appVersao').textContent = CONFIG.APP_VERSION;
-  const r = repoSalvo();
-  $('updStatus').textContent = r
-    ? `Repositório: ${r.user}/${r.repo}`
-    : 'Sem repositório — atualizações automáticas desligadas.';
-  $('ajustesStatus').textContent = apiBaseAtual
-    ? `Conectado em ${apiBaseAtual}`
-    : 'Ainda não testado';
+  $('updStatus').textContent = repoSalvo()
+    ? `Repositório: ${repoSalvo().user}/${repoSalvo().repo}`
+    : 'Atualizações automáticas desligadas.';
   $('modalAjustes').classList.remove('hidden');
+  // mostra o modo tecnico so se o barbeiro ja o abriu antes
+  if (localStorage.getItem('barbearia_tecnico') === '1') {
+    $('blocoTecnico').classList.remove('hidden');
+    $('btnModoTecnico').classList.add('hidden');
+  } else {
+    $('blocoTecnico').classList.add('hidden');
+    $('btnModoTecnico').classList.remove('hidden');
+  }
+}
+
+function abrirModoTecnico() {
+  localStorage.setItem('barbearia_tecnico', '1');
+  $('blocoTecnico').classList.remove('hidden');
+  $('btnModoTecnico').classList.add('hidden');
 }
 
 function fecharAjustes() { $('modalAjustes').classList.add('hidden'); }
@@ -882,6 +891,66 @@ function clientNotPaid() {
   renderResume();
 }
 
+// ===== limpa o estado de pagamento ao abrir =====
+// Quando o app e fechado (foreground ou background) e reaberto,
+// volta ao normal: sem QR code, sem pagamento pendente, etapa 1.
+function limparEstadoPagamento() {
+  pararConferencia();
+  pixBooking = null;
+  serviceIds = [];
+  dayKey = null;
+  time = null;
+  name = '';
+  phone = '';
+  note = '';
+  payMethod = 'dinheiro';
+  // volta para a etapa 1
+  showStep(1);
+  renderAll();
+  renderToday();
+}
+
+// ===== detecta fechamento do aplicativo =====
+// Salva a hora em que a pagina ficou invisivel.
+// Se passou mais de 2 minutos, considera que o app foi fechado
+// e limpa o estado de pagamento na proxima abertura.
+let horaInvisivel = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    horaInvisivel = Date.now();
+    localStorage.setItem('barbearia_ultima_invisivel', String(horaInvisivel));
+  } else if (document.visibilityState === 'visible') {
+    const ultima = Number(localStorage.getItem('barbearia_ultima_invisivel') || 0);
+    const agora = Date.now();
+    // se ficou mais de 2 minutos invisivel, trata como fechamento
+    if (ultima > 0 && agora - ultima > 2 * 60 * 1000) {
+      limparEstadoPagamento();
+    }
+    localStorage.removeItem('barbearia_ultima_invisivel');
+  }
+});
+
+// pagehide dispara quando o app e morto pelo sistema
+window.addEventListener('pagehide', () => {
+  localStorage.setItem('barbearia_app_fechado', '1');
+});
+
+// no load: se o app foi fechado (flag setado), limpa o estado
+(function verificarFechamento() {
+  if (localStorage.getItem('barbearia_app_fechado') === '1') {
+    localStorage.removeItem('barbearia_app_fechado');
+    // limpa tambem o estado de pagamento salvo
+    pixBooking = null;
+    serviceIds = [];
+    dayKey = null;
+    time = null;
+    name = '';
+    phone = '';
+    note = '';
+    payMethod = 'dinheiro';
+  }
+})();
+
 // Botão flutuante que reaparece quando o cliente volta ao site
 function showFloatWpp(b) {
   const f = $('pixFloat');
@@ -1097,8 +1166,38 @@ $('btnFecharAjustes').onclick = fecharAjustes;
 $('btnTestarServidor').onclick = testarServidor;
 $('btnSalvarServidor').onclick = salvarServidor;
 $('btnSalvarRepo').onclick = salvarRepo;
+$('btnVerificarUpdate').onclick = async () => {
+  $('updStatus').textContent = 'Procurando...';
+  const achou = await checarAtualizacao({ silencioso: false });
+  $('updStatus').textContent = achou
+    ? `Atualização ${achou} disponível!`
+    : `Você está na versão mais recente (${CONFIG.APP_VERSION}).`;
+};
 $('btnVerQr').onclick = abrirQrGrande;
 $('btnFecharQr').onclick = () => $('modalQr').classList.add('hidden');
+
+// parceria
+$('btnParceria').onclick = () => {
+  $('btnWppParceria').href = `https://wa.me/5521980204832?text=${encodeURIComponent('Olá! Vim do aplicativo da Barbearia do Jota.')}`;
+  $('modalParceria').classList.remove('hidden');
+};
+$('btnFecharParceria').onclick = () => $('modalParceria').classList.add('hidden');
+
+// modo tecnico: escondido por padrao, aparece com 5 toques no logo
+let toquesLogo = 0, timerToques;
+$('logoTecnico') && ($('logoTecnico').onclick = abrirModoTecnico);
+document.querySelector('.brand img').addEventListener('click', () => {
+  toquesLogo++;
+  clearTimeout(timerToques);
+  timerToques = setTimeout(() => { toquesLogo = 0; }, 1500);
+  if (toquesLogo >= 5) { toquesLogo = 0; abrirModoTecnico(); }
+});
+function abrirModoTecnico() {
+  $('blocoTecnico').classList.remove('hidden');
+  $('btnModoTecnico').classList.add('hidden');
+}
+// modo tecnico: escondido por padrao, aparece com 5 toques no logo
+// (o botao visivel foi removido, mas a funcionalidade continua)
 document.querySelectorAll('.payopt').forEach((el) => el.onclick = () => { payMethod = el.dataset.pay; renderPay(); renderResume(); });
 $('calPrev').onclick = () => shiftMonth(-1);
 $('calNext').onclick = () => shiftMonth(1);
@@ -1145,16 +1244,24 @@ window.addEventListener('load', () => {
   renderToday();
   checkPixOnLoad();
   checarServidor();
+  // limpa o estado de pagamento ao abrir (nao salva QR code)
+  limparEstadoPagamento();
   // procura versao nova no GitHub (silencioso: so mostra se existir)
-  setTimeout(() => checarAtualizacao({ silencioso: true }), 1000);
-  // e de novo a cada 10 minutos, enquanto o app estiver aberto
-  setInterval(() => checarAtualizacao({ silencioso: true }), 10 * 60 * 1000);
-  // ao voltar para o app (depois de ter saido), confere de novo
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      setTimeout(() => checarAtualizacao({ silencioso: true }), 500);
-    }
-  });
+  // so dentro do aplicativo (APK), nao no navegador
+  // so dentro do aplicativo (APK), nao no navegador
+  const ehApk = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if (ehApk) {
+    // confere logo ao abrir
+    setTimeout(() => checarAtualizacao({ silencioso: true }), 1000);
+    // e de novo a cada 10 minutos, enquanto o app estiver aberto
+    setInterval(() => checarAtualizacao({ silencioso: true }), 10 * 60 * 1000);
+    // ao voltar para o app (depois de ter saido), confere de novo
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        setTimeout(() => checarAtualizacao({ silencioso: true }), 500);
+      }
+    });
+  }
 });
 window.addEventListener('resize', ajustarTarjaDoTopo);
 window.addEventListener('orientationchange', ajustarTarjaDoTopo);
