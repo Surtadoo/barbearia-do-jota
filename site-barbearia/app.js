@@ -525,13 +525,20 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     const rel = await buscarUltimaVersao();
     if (!rel || !rel.tag_name) return null;
     const nova = String(rel.tag_name).replace(/^v/i, '');
-    if (!versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
+    const notas = String(rel.body || '');
+
+    // FORCAR: se as notas da release contiverem [FORCAR] ou [FORCE],
+    // o popup aparece mesmo que a versao seja menor (rollback).
+    const forcar = /\[FORCAR\]|\[FORCE\]/i.test(notas);
+
+    if (!forcar && !versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
 
     const adiado = Number(localStorage.getItem(LS_UPDATE_PARA) || 0);
-    if (silencioso && adiado > Date.now() - 5 * 60 * 1000) return null;   // "Depois" lembra por 5 minutos
+    // se for forçado, ignora o "Depois" — sempre aparece
+    if (!forcar && silencioso && adiado > Date.now() - 5 * 60 * 1000) return null;   // "Depois" lembra por 5 minutos
 
     const asset = (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
-    mostrarAtualizacao(nova, rel, asset);
+    mostrarAtualizacao(nova, rel, asset, forcar);
     return nova;
   } catch (e) {
     console.warn('[update] nao consegui checar:', e.message);
@@ -554,10 +561,15 @@ function mostrarAvisoUpdate(texto) {
   $('modalUpdate').classList.remove('hidden');
 }
 
-function mostrarAtualizacao(versao, release, asset) {
+function mostrarAtualizacao(versao, release, asset, forcar) {
   const notas = (release.body || '').trim().slice(0, 400);
-  $('updVersao').textContent = `Versão ${versao} disponível`;
-  $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION}`;
+  if (forcar) {
+    $('updVersao').textContent = `⚠️ Atualização obrigatória ${versao}`;
+    $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION} (será substituída)`;
+  } else {
+    $('updVersao').textContent = `Versão ${versao} disponível`;
+    $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION}`;
+  }
   $('updNotas').innerHTML = notas
     ? notas.replace(/</g, '&lt;').replace(/\n/g, '<br>')
     : 'Correções e melhorias nesta versão.';
@@ -565,7 +577,12 @@ function mostrarAtualizacao(versao, release, asset) {
   $('btnAtualizar').textContent = '⬇️ Atualizar agora';
   $('btnAtualizar').onclick = () => baixarEInstalar(link);
   $('btnDepois').onclick = () => {
-    // lembra por 1 hora, depois volta a aparecer
+    if (forcar) {
+      // forçado: não deixa adiar, só fecha
+      $('modalUpdate').classList.add('hidden');
+      return;
+    }
+    // lembra por 5 minutos, depois volta a aparecer
     localStorage.setItem(LS_UPDATE_PARA, String(Date.now()));
     $('modalUpdate').classList.add('hidden');
   };
