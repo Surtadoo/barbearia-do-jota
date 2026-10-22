@@ -1,0 +1,15 @@
+﻿{
+  "name": "Barbearia do Jota",
+  "short_name": "Barbearia",
+  "description": "Agende seu corte na Barbearia do Jota - Rua Javata, 1506 - Anchieta",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111114",
+  "theme_color": "#C9A227",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

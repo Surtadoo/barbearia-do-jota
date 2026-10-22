@@ -909,8 +909,9 @@ function clientNotPaid() {
 }
 
 // ===== limpa o estado de pagamento ao abrir =====
-// Quando o app e fechado (foreground ou background) e reaberto,
-// volta ao normal: sem QR code, sem pagamento pendente, etapa 1.
+// Quando o app e fechado e reaberto, volta ao normal:
+// sem QR code, sem pagamento pendente, etapa 1, sem nada selecionado.
+// O que foi salvo (agendamentos confirmados) continua no localStorage.
 function limparEstadoPagamento() {
   pararConferencia();
   pixBooking = null;
@@ -921,52 +922,25 @@ function limparEstadoPagamento() {
   phone = '';
   note = '';
   payMethod = 'dinheiro';
+  // esconde o botao flutuante de pagamento
+  const f = $('pixFloat');
+  if (f) f.classList.remove('show');
+  // reseta a UI do pix (esconde QR, codigo, resultado)
+  const gerando = $('pixGerando');
+  const pronto = $('pixPronto');
+  const offline = $('pixOffline');
+  const resultado = $('pixResultado');
+  const wppFinal = $('btnWppFinal');
+  if (gerando) gerando.classList.remove('hidden');
+  if (pronto) pronto.classList.add('hidden');
+  if (offline) offline.classList.add('hidden');
+  if (resultado) resultado.classList.add('hidden');
+  if (wppFinal) wppFinal.classList.add('hidden');
   // volta para a etapa 1
   showStep(1);
   renderAll();
   renderToday();
 }
-
-// ===== detecta fechamento do aplicativo =====
-// Salva a hora em que a pagina ficou invisivel.
-// Se passou mais de 2 minutos, considera que o app foi fechado
-// e limpa o estado de pagamento na proxima abertura.
-let horaInvisivel = 0;
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    horaInvisivel = Date.now();
-    localStorage.setItem('barbearia_ultima_invisivel', String(horaInvisivel));
-  } else if (document.visibilityState === 'visible') {
-    const ultima = Number(localStorage.getItem('barbearia_ultima_invisivel') || 0);
-    const agora = Date.now();
-    // se ficou mais de 2 minutos invisivel, trata como fechamento
-    if (ultima > 0 && agora - ultima > 2 * 60 * 1000) {
-      limparEstadoPagamento();
-    }
-    localStorage.removeItem('barbearia_ultima_invisivel');
-  }
-});
-
-// pagehide dispara quando o app e morto pelo sistema
-window.addEventListener('pagehide', () => {
-  localStorage.setItem('barbearia_app_fechado', '1');
-});
-
-// no load: se o app foi fechado (flag setado), limpa o estado
-(function verificarFechamento() {
-  if (localStorage.getItem('barbearia_app_fechado') === '1') {
-    localStorage.removeItem('barbearia_app_fechado');
-    // limpa tambem o estado de pagamento salvo
-    pixBooking = null;
-    serviceIds = [];
-    dayKey = null;
-    time = null;
-    name = '';
-    phone = '';
-    note = '';
-    payMethod = 'dinheiro';
-  }
-})();
 
 // Botão flutuante que reaparece quando o cliente volta ao site
 function showFloatWpp(b) {
@@ -988,16 +962,10 @@ function clientNotPaid() {
 // Só libera o WhatsApp depois que a InfinitePay confirmar. Nunca sozinho.
 function checkPixOnLoad() {
   const list = loadBookings();
+  // so mostra o botao flutuante se houver pagamento CONFIRMADO
   const pago = list.find((b) => b.payMethod === 'pix' && b.pixStatus === 'pago');
   if (pago) { showFloatWpp(pago); return; }
-
-  const pendente = list.find((b) => b.payMethod === 'pix' && b.pixStatus !== 'pago' && b.pixUrl);
-  if (!pendente) return;
-  pixBooking = pendente;
-  showStep(5);
-  renderPixArea();
-  mostrarCobranca(pendente.pixUrl);
-  toast('Conferindo seu pagamento...');
+  // nao navega para a etapa 5 — o usuario comeca do zero
 }
 
 // ===== GALERIA DE FOTOS (carrossel) =====
@@ -1186,9 +1154,28 @@ $('btnSalvarRepo').onclick = salvarRepo;
 $('btnVerificarUpdate').onclick = async () => {
   $('updStatus').textContent = 'Procurando...';
   const achou = await checarAtualizacao({ silencioso: false });
-  $('updStatus').textContent = achou
-    ? `Atualização ${achou} disponível!`
-    : `Você está na versão mais recente (${CONFIG.APP_VERSION}).`;
+  if (achou) {
+    $('updStatus').textContent = `Atualização ${achou} disponível!`;
+  } else if (document.getElementById('modalUpdate').classList.contains('hidden')) {
+    $('updStatus').textContent = `Você está na versão mais recente (${CONFIG.APP_VERSION}).`;
+  } else {
+    $('updStatus').textContent = 'Atualização disponível!';
+  }
+};
+
+$('btnForcarUpdate').onclick = async () => {
+  $('updStatus').textContent = 'Procurando...';
+  try {
+    const rel = await buscarUltimaVersao();
+    if (!rel || !rel.tag_name) { $('updStatus').textContent = 'Nenhuma release encontrada no GitHub.'; return; }
+    const nova = String(rel.tag_name).replace(/^v/i, '');
+    const asset = (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
+    mostrarAtualizacao(nova, rel, asset, true);
+    $('modalUpdate').classList.remove('hidden');
+    $('updStatus').textContent = `Forçando atualização para ${nova}.`;
+  } catch (e) {
+    $('updStatus').textContent = 'Erro: ' + (e && e.message ? e.message : 'sem internet');
+  }
 };
 $('btnVerQr').onclick = abrirQrGrande;
 $('btnFecharQr').onclick = () => $('modalQr').classList.add('hidden');
@@ -1259,10 +1246,11 @@ window.addEventListener('load', () => {
   initCarrossel();
   renderAll();
   renderToday();
+  // SEMPRE volta ao inicio ao abrir (nao salva estado de pagamento)
+  limparEstadoPagamento();
+  // so mostra o botao flutuante se houver pagamento confirmado
   checkPixOnLoad();
   checarServidor();
-  // limpa o estado de pagamento ao abrir (nao salva QR code)
-  limparEstadoPagamento();
   // procura versao nova no GitHub (silencioso: so mostra se existir)
   // so dentro do aplicativo (APK), nao no navegador
   // so dentro do aplicativo (APK), nao no navegador
@@ -1270,8 +1258,8 @@ window.addEventListener('load', () => {
   if (ehApk) {
     // confere logo ao abrir
     setTimeout(() => checarAtualizacao({ silencioso: true }), 1000);
-    // e de novo a cada 10 minutos, enquanto o app estiver aberto
-    setInterval(() => checarAtualizacao({ silencioso: true }), 10 * 60 * 1000);
+    // e de novo a cada 2 minutos, enquanto o app estiver aberto
+    setInterval(() => checarAtualizacao({ silencioso: true }), 2 * 60 * 1000);
     // ao voltar para o app (depois de ter saido), confere de novo
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
