@@ -1,56 +1,56 @@
-// ===== CONFIG CENTRAL â€” edite aqui =====
+// ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
-  // VersÃ£o do aplicativo. Aumente este nÃºmero toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.09',
+  // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
+  APP_VERSION: '1.0.10',
 
-  // RepositÃ³rio do GitHub onde os APK sÃ£o publicados.
-  // Precisa ser PUBLICO, senÃ£o o aplicativo nÃ£o consegue ler as versÃµes.
+  // Repositório do GitHub onde os APK são publicados.
+  // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
   GITHUB_USER: 'Surtadoo',
   GITHUB_REPO: 'barbearia-do-jota',
 
   BARBER_NAME: 'Barbearia do Jota',
   BARBER_ADDRESS: 'Rua Javata, 1506 - Anchieta',
-  BARBER_WHATSAPP: '5521990772663', // +55 21 99077-2663 (sÃ³ dÃ­gitos)
+  BARBER_WHATSAPP: '5521990772663', // +55 21 99077-2663 (só dígitos)
 
-  // EndereÃ§o do servidor que confere o Pix.
+  // Endereço do servidor que confere o Pix.
   // No computador: http://localhost:3001
   // No celular / APK: troque localhost pelo IP do PC na mesma rede (ex.: http://192.168.1.73:3001)
-  // Se publicar o backend na internet, cole aqui o endereÃ§o https://... e apague os de baixo.
+  // Se publicar o backend na internet, cole aqui o endereço https://... e apague os de baixo.
   API_BASES: [
     'http://localhost:3001',
     'http://192.168.1.73:3001',
   ],
   SIGNAL_VALUE: 10.00,
-  // Chave Pix cadastrada na InfinitePay (chave aleatÃ³ria)
+  // Chave Pix cadastrada na InfinitePay (chave aleatória)
   PIX_KEY: 'c02767e5-8d53-44d2-a93f-ff3534b1b4ce',
 
   // Link fixo de pagamento do sinal. O site NAO cria cobranca nova:
   // o cliente paga nesse link e o servidor so confere se o dinheiro caiu.
   PIX_LINK: 'https://link.infinitepay.io/yago-assumpcao-y9d/VC1B-ZROqZmZFD4-10,00',
   CLOSED_WEEKDAY: 1,
-  ABOUT: 'Na Barbearia do Jota, cuidar do visual Ã© mais do que fazer um corte â€” Ã© oferecer uma experiÃªncia de qualidade, com atendimento de respeito, praticidade e aquele cuidado que vocÃª merece.\n\nTrabalhamos com cortes modernos, barba na navalha e serviÃ§os pensados para deixar vocÃª sempre no estilo. Nosso objetivo Ã© proporcionar um atendimento rÃ¡pido, profissional e sem complicaÃ§Ã£o.\n\nAqui vocÃª escolhe o serviÃ§o, o dia e o horÃ¡rio que deseja. Em poucos minutos, seu atendimento jÃ¡ fica agendado e vocÃª pode chegar Ã  barbearia sabendo que sua vaga estÃ¡ garantida.\n\nSeu horÃ¡rio, do seu jeito\nChega de perder tempo esperando. Com nosso sistema de agendamento, vocÃª escolhe o melhor horÃ¡rio e jÃ¡ deixa tudo organizado antes de sair de casa.\n\nPagamento em dinheiro: a confirmaÃ§Ã£o Ã© feita diretamente pelo WhatsApp.\nPagamento via Pix: vocÃª paga um sinal de R$ 10,00 para garantir sua vaga. O valor do sinal Ã© descontado do preÃ§o total do serviÃ§o.\n\nVaga garantida: apÃ³s a confirmaÃ§Ã£o do pagamento, seu horÃ¡rio fica reservado para vocÃª.\n\nOnde estamos\nBarbearia do Jota\nRua Javata, 1506 - Anchieta\n\nAtendimento: TerÃ§a a domingo, das 09h Ã s 21h\nSegunda-feira: fechado\n\nVenha conhecer a Barbearia do Jota e tenha um atendimento de qualidade, com horÃ¡rio marcado e sem complicaÃ§Ã£o.\n\nCorte certo, na hora certa.',
+  ABOUT: 'Na Barbearia do Jota, cuidar do visual é mais do que fazer um corte — é oferecer uma experiência de qualidade, com atendimento de respeito, praticidade e aquele cuidado que você merece.\n\nTrabalhamos com cortes modernos, barba na navalha e serviços pensados para deixar você sempre no estilo. Nosso objetivo é proporcionar um atendimento rápido, profissional e sem complicação.\n\nAqui você escolhe o serviço, o dia e o horário que deseja. Em poucos minutos, seu atendimento já fica agendado e você pode chegar à barbearia sabendo que sua vaga está garantida.\n\nSeu horário, do seu jeito\nChega de perder tempo esperando. Com nosso sistema de agendamento, você escolhe o melhor horário e já deixa tudo organizado antes de sair de casa.\n\nPagamento em dinheiro: a confirmação é feita diretamente pelo WhatsApp.\nPagamento via Pix: você paga um sinal de R$ 10,00 para garantir sua vaga. O valor do sinal é descontado do preço total do serviço.\n\nVaga garantida: após a confirmação do pagamento, seu horário fica reservado para você.\n\nOnde estamos\nBarbearia do Jota\nRua Javata, 1506 - Anchieta\n\nAtendimento: Terça a domingo, das 09h às 21h\nSegunda-feira: fechado\n\nVenha conhecer a Barbearia do Jota e tenha um atendimento de qualidade, com horário marcado e sem complicação.\n\nCorte certo, na hora certa.',
 };
 
-// ===== serviÃ§os =====
+// ===== serviços =====
 const SERVICES = [
-  { id: 'corte', name: 'Corte normal', desc: 'sÃ³ mÃ¡quina', price: 30, duration: 60, icon: 'âœ‚ï¸' },
-  { id: 'corte-simples', name: 'Corte Simples', desc: 'Corte rÃ¡pido e prÃ¡tico', price: 22, duration: 30, icon: 'âœ‚ï¸' },
-  { id: 'barba', name: 'Barba', desc: 'Barba completa com navalha', price: 15, duration: 30, icon: 'ðŸ§”' },
-  { id: 'cavanhaque', name: 'Cavanhaque', desc: 'Cavanhaque com navalha', price: 12, duration: 30, icon: 'ðŸª’' },
-  { id: 'pe', name: 'PÃ©', desc: 'Fazer o pezinho do cabelo', price: 10, duration: 20, icon: 'ðŸ¦¶' },
-  { id: 'barba-retirar-tudo', name: 'Barba (retirar tudo)', desc: 'RemoÃ§Ã£o completa de barba', price: 12, duration: 30, icon: 'ðŸª’' },
-  { id: 'sobrancelha', name: 'Sobrancelha', desc: 'Design + navalha', price: 7, duration: 15, icon: 'ðŸ¤¨' },
-  { id: 'pigmentacao', name: 'PigmentaÃ§Ã£o', desc: 'PigmentaÃ§Ã£o capilar', price: 15, duration: 30, icon: 'ðŸŽ¨' },
-  { id: 'pigmentacao-barba', name: 'PigmentaÃ§Ã£o na Barba', desc: 'PigmentaÃ§Ã£o na barba', price: 10, duration: 30, icon: 'ðŸŽ¨' },
-  { id: 'reflexo', name: 'Reflexo', desc: 'Reflexo com matizaÃ§Ã£o', price: 45, duration: 90, icon: 'ðŸŽ¨' },
-  { id: 'nevou', name: 'Nevou', desc: 'Efeito nevado nos cabelos', price: 50, duration: 90, icon: 'â„ï¸' },
-  { id: 'corte-kids', name: 'Corte Kids', desc: 'Corte para crianÃ§as', price: 35, duration: 60, icon: 'ðŸ‘¦' },
+  { id: 'corte', name: 'Corte normal', desc: 'só máquina', price: 30, duration: 60, icon: '✂️' },
+  { id: 'corte-simples', name: 'Corte Simples', desc: 'Corte rápido e prático', price: 22, duration: 30, icon: '✂️' },
+  { id: 'barba', name: 'Barba', desc: 'Barba completa com navalha', price: 15, duration: 30, icon: '🧔' },
+  { id: 'cavanhaque', name: 'Cavanhaque', desc: 'Cavanhaque com navalha', price: 12, duration: 30, icon: '🪒' },
+  { id: 'pe', name: 'Pé', desc: 'Fazer o pezinho do cabelo', price: 10, duration: 20, icon: '🦶' },
+  { id: 'barba-retirar-tudo', name: 'Barba (retirar tudo)', desc: 'Remoção completa de barba', price: 12, duration: 30, icon: '🪒' },
+  { id: 'sobrancelha', name: 'Sobrancelha', desc: 'Design + navalha', price: 7, duration: 15, icon: '🤨' },
+  { id: 'pigmentacao', name: 'Pigmentação', desc: 'Pigmentação capilar', price: 15, duration: 30, icon: '🎨' },
+  { id: 'pigmentacao-barba', name: 'Pigmentação na Barba', desc: 'Pigmentação na barba', price: 10, duration: 30, icon: '🎨' },
+  { id: 'reflexo', name: 'Reflexo', desc: 'Reflexo com matização', price: 45, duration: 90, icon: '🎨' },
+  { id: 'nevou', name: 'Nevou', desc: 'Efeito nevado nos cabelos', price: 50, duration: 90, icon: '❄️' },
+  { id: 'corte-kids', name: 'Corte Kids', desc: 'Corte para crianças', price: 35, duration: 60, icon: '👦' },
 ];
 
 const TIME_SLOTS = ['09:00','09:40','10:20','11:00','11:40','12:20','13:00','13:40','14:20','15:00','15:40','16:20','17:00','17:40','18:20','19:00','19:40','20:20','21:00'];
 const LS_KEY = 'barbearia_bookings_v1';
-const MESES = ['Janeiro','Fevereiro','MarÃ§o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SÃB'];
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 
 // desliga a restauracao automatica de scroll do navegador
 // (senao ao recarregar a pagina volta para onde estava)
@@ -104,9 +104,9 @@ function newId() { return 'BK' + Date.now().toString(36).toUpperCase() + Math.fl
 function payLabel(b) {
   if (b.payMethod === 'pix') {
     const signal = signalOf(b.price); const rest = b.price - signal;
-    if (b.pixStatus === 'pago') return `Pix sinal ${BRL(signal)} PAGO âœ” Â· restante ${BRL(rest)}`;
-    if (b.pixStatus === 'aguardando') return `Pix sinal ${BRL(signal)} aguardando Â· restante ${BRL(rest)}`;
-    return `Pix sinal ${BRL(signal)} Â· restante ${BRL(rest)}`;
+    if (b.pixStatus === 'pago') return `Pix sinal ${BRL(signal)} PAGO ✔ · restante ${BRL(rest)}`;
+    if (b.pixStatus === 'aguardando') return `Pix sinal ${BRL(signal)} aguardando · restante ${BRL(rest)}`;
+    return `Pix sinal ${BRL(signal)} · restante ${BRL(rest)}`;
   }
   return 'Dinheiro no local';
 }
@@ -114,19 +114,19 @@ function buildMsg(b) {
   const signal = b.payMethod === 'pix' ? signalOf(b.price) : 0;
   const rest = b.price - signal;
   return [
-    `ðŸ’ˆ *${CONFIG.BARBER_NAME}* â€” Novo agendamento`,
+    `💈 *${CONFIG.BARBER_NAME}* — Novo agendamento`,
     ``,
-    `ðŸ”– CÃ³digo: ${b.id}`,
-    `ðŸ‘¤ Nome: ${b.clientName}`,
-    `ðŸ“ž WhatsApp: ${b.clientPhone}`,
-    `âœ‚ï¸ ServiÃ§o: ${b.serviceName} â€” ${BRL(b.price)}`,
-    `ðŸ“… Data: ${b.dateLabel} (${b.dow}) Ã s ${b.time}`,
-    b.note ? `ðŸ“ ObservaÃ§Ã£o: ${b.note}` : null,
-    `ðŸ’³ Pagamento: ${payLabel(b)}`,
-    b.payMethod === 'pix' ? `ðŸ’° Total: ${BRL(b.price)} Â· Sinal: ${BRL(signal)} Â· Restante: ${BRL(rest)}` : `ðŸ’° Total no local: ${BRL(b.price)}`,
-    b.mpPaymentId ? `ðŸ§¾ MP: ${b.mpPaymentId}` : null,
+    `🔖 Código: ${b.id}`,
+    `👤 Nome: ${b.clientName}`,
+    `📞 WhatsApp: ${b.clientPhone}`,
+    `✂️ Serviço: ${b.serviceName} — ${BRL(b.price)}`,
+    `📅 Data: ${b.dateLabel} (${b.dow}) às ${b.time}`,
+    b.note ? `📝 Observação: ${b.note}` : null,
+    `💳 Pagamento: ${payLabel(b)}`,
+    b.payMethod === 'pix' ? `💰 Total: ${BRL(b.price)} · Sinal: ${BRL(signal)} · Restante: ${BRL(rest)}` : `💰 Total no local: ${BRL(b.price)}`,
+    b.mpPaymentId ? `🧾 MP: ${b.mpPaymentId}` : null,
     ``,
-    `Aguardo confirmaÃ§Ã£o! ðŸ™`,
+    `Aguardo confirmação! 🙏`,
   ].filter(Boolean).join('\n');
 }
 function openWhatsApp(booking) {
@@ -141,7 +141,7 @@ function toast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// a rolagem animada sÃ³ funciona com a aba visÃ­vel
+// a rolagem animada só funciona com a aba visível
 const podeAnimar = () => document.visibilityState === 'visible' && typeof requestAnimationFrame === 'function';
 
 // ===== rolagem suave (funciona em qualquer navegador) =====
@@ -151,7 +151,7 @@ function rolarPara(y) {
   const inicio = window.pageYOffset;
   const dist = destino - inicio;
   if (Math.abs(dist) < 2) return;
-  // aba oculta / sem animaÃ§Ã£o: vai direto
+  // aba oculta / sem animação: vai direto
   if (!podeAnimar()) {
     window.scrollTo(0, destino);
     return;
@@ -186,7 +186,7 @@ function showStep(n) {
     el.classList.toggle('active', s === n);
     el.classList.toggle('done', s < n);
   });
-  // nao rola automaticamente â€” cada chamador decide se quer rolar
+  // nao rola automaticamente — cada chamador decide se quer rolar
 }
 
 // rola ate a barra de etapas (usado pelos botoes de navegacao)
@@ -199,12 +199,12 @@ function irParaPassos() {
   window.scrollTo({ top: Math.max(0, topo), behavior: 'smooth' });
 }
 
-// ===== serviÃ§os =====
+// ===== serviços =====
 function renderServices() {
   $('servicesGrid').innerHTML = SERVICES.map((s) => `
     <div class="card ${serviceIds.includes(s.id) ? 'selected' : ''}" data-id="${s.id}">
       <div class="icon">${s.icon}</div>
-      <div><b>${s.name}</b><small>${s.desc} Â· â± ${s.duration} min Â· ${BRL(s.price)}</small></div>
+      <div><b>${s.name}</b><small>${s.desc} · ⏱ ${s.duration} min · ${BRL(s.price)}</small></div>
     </div>`).join('');
   document.querySelectorAll('#servicesGrid .card').forEach((el) =>
     el.onclick = () => {
@@ -220,7 +220,7 @@ function renderServices() {
 }
 function renderAll() { renderServices(); renderCalendar(); renderTimes(); renderPay(); renderResume(); }
 
-// ===== calendÃ¡rio =====
+// ===== calendário =====
 function initCalendar() {
   const n = new Date();
   viewY = n.getFullYear(); viewM = n.getMonth();
@@ -256,7 +256,7 @@ function renderCalendar() {
     });
 }
 
-// ===== horÃ¡rios (etapa 3) =====
+// ===== horários (etapa 3) =====
 async function renderTimes() {
   const box = $('timesGrid');
   if (!dayKey) { box.innerHTML = '<span class="tiny">Escolha um dia na etapa anterior.</span>'; return; }
@@ -284,10 +284,10 @@ async function renderTimes() {
   const total = box.querySelectorAll('.slot').length;
   if (hint) {
     hint.textContent = !total
-      ? 'NÃ£o hÃ¡ mais horÃ¡rios livres neste dia. Escolha outra data.'
+      ? 'Não há mais horários livres neste dia. Escolha outra data.'
       : isToday
-        ? `Mostrando sÃ³ os horÃ¡rios que ainda vÃ£o acontecer hoje. ${total} vaga(s) livre(s).`
-        : `${total} horÃ¡rio(s) disponÃ­vel(is) neste dia.`;
+        ? `Mostrando só os horários que ainda vão acontecer hoje. ${total} vaga(s) livre(s).`
+        : `${total} horário(s) disponível(is) neste dia.`;
   }
 }
 
@@ -296,7 +296,7 @@ function renderPay() {
   document.querySelectorAll('.payopt').forEach((el) => {
     const active = el.dataset.pay === payMethod;
     el.classList.toggle('selected', active);
-    el.querySelector('.radio').textContent = active ? 'â—' : 'â—‹';
+    el.querySelector('.radio').textContent = active ? '●' : '○';
   });
   const isPix = payMethod === 'pix';
   $('boxDinheiro').classList.toggle('hidden', isPix);
@@ -305,9 +305,9 @@ function renderPay() {
 
 function renderResume() {
   const services = getServices(serviceIds);
-  $('resumeService').textContent = services.map(s => `âœ‚ï¸ ${s.name}`).join(' Â· ');
-  $('resumeWhen').textContent = `ðŸ“… ${dayKey ? fmtFull(dayKey) + ' (' + dowOf(dayKey) + ')' : 'â€”'} Ã s ${time || 'â€”'}`;
-  $('resumeClient').textContent = `ðŸ‘¤ ${name || 'â€”'} Â· ðŸ“ž ${phone || 'â€”'}`;
+  $('resumeService').textContent = services.map(s => `✂️ ${s.name}`).join(' · ');
+  $('resumeWhen').textContent = `📅 ${dayKey ? fmtFull(dayKey) + ' (' + dowOf(dayKey) + ')' : '—'} às ${time || '—'}`;
+  $('resumeClient').textContent = `👤 ${name || '—'} · 📞 ${phone || '—'}`;
   const total = getTotalPrice(serviceIds);
   const totalDuration = getTotalDuration(serviceIds);
   $('resumePrice').textContent = BRL(total);
@@ -315,15 +315,15 @@ function renderResume() {
   const signal = signalOf(total);
   $('resumeDiscount').classList.toggle('hidden', !isPix);
   if (isPix) {
-    $('resumeSignalValue').textContent = `âˆ’ ${BRL(signal)}`;
+    $('resumeSignalValue').textContent = `− ${BRL(signal)}`;
     $('resumeRest').textContent = BRL(total - signal);
-    $('resumeSignal').textContent = `Sinal de ${BRL(signal)} via Pix descontado do total Â· Restante de ${BRL(total - signal)} paga no local`;
+    $('resumeSignal').textContent = `Sinal de ${BRL(signal)} via Pix descontado do total · Restante de ${BRL(total - signal)} paga no local`;
   } else {
     $('resumeSignal').textContent = 'Pagamento total em dinheiro no local';
   }
 }
 
-// ===== validaÃ§Ã£o =====
+// ===== validação =====
 function collectOrToast() {
   if (serviceIds.length === 0) { toast('Escolha pelo menos um corte.'); return null; }
   if (name.trim().length < 3) { toast('Digite seu nome completo.'); return null; }
@@ -351,7 +351,7 @@ async function confirmMoney() {
   showStep(1);
 }
 
-// ===== GERAÃ‡ÃƒO DO PIX (BR Code EMV com valor travado) =====
+// ===== GERAÇÃO DO PIX (BR Code EMV com valor travado) =====
 function tlv(id, value) {
   let v = String(value);
   return id + String(v.length).padStart(2, '0') + v;
@@ -365,7 +365,7 @@ function buildPixPayload(key, amount, txid) {
   const value = Number(amount).toFixed(2);
   const tx = String(txid || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 25).toUpperCase() || '***';
 
-  // merchant account: chave aleatÃ³ria / CPF-CNPJ / email / telefone
+  // merchant account: chave aleatória / CPF-CNPJ / email / telefone
   let account;
   if (/^\+?[0-9]{10,14}$/.test(k)) {
     account = tlv('00', 'br.gov.bcb.pix') + tlv('01', k);
@@ -400,14 +400,14 @@ function crc16(payload) {
   }
   return crc.toString(16).toUpperCase().padStart(4, '0');
 }
-// QR Code via serviÃ§o publico (funciona para qualquer app de banco).
+// QR Code via serviço publico (funciona para qualquer app de banco).
 // Se a imagem nao carregar, o copia-e-cola abaixo continua funcionando.
 function showPixQr(payload) {
   const box = $('pixQrBox');
   if (!box) return;
   box.innerHTML = '';
   if (!payload) {
-    box.innerHTML = '<span class="qr-msg">Use o cÃ³digo copia e cola ao lado</span>';
+    box.innerHTML = '<span class="qr-msg">Use o código copia e cola ao lado</span>';
     return;
   }
   const src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=' + encodeURIComponent(payload);
@@ -415,7 +415,7 @@ function showPixQr(payload) {
   newImg.src = src;
   newImg.alt = 'QR Code Pix';
   newImg.onerror = () => {
-    box.innerHTML = '<span class="qr-msg">Use o cÃ³digo copia e cola ao lado</span>';
+    box.innerHTML = '<span class="qr-msg">Use o código copia e cola ao lado</span>';
   };
   box.appendChild(newImg);
 }
@@ -446,19 +446,19 @@ async function generatePixBooking() {
   }
 }
 
-// Chave Pix precisa ser real (CPF, CNPJ, e-mail, telefone ou chave aleatÃ³ria)
+// Chave Pix precisa ser real (CPF, CNPJ, e-mail, telefone ou chave aleatória)
 const PIX_KEY_OK = () => {
   const k = normalizeKey(CONFIG.PIX_KEY);
   return !!k && k !== 'sua-chave-pix-aqui' && !k.startsWith('COLOQUE');
 };
 
 // ============================================================
-//  ATUALIZAÃ‡ÃƒO DO APLICATIVO
+//  ATUALIZAÇÃO DO APLICATIVO
 //
 //  O APK pergunta no GitHub se existe uma versao nova.
 //  Se tiver, mostra o popup com "Atualizar" e "Depois".
 //
-//  Para ligar, escreva no âš™ï¸ (campo "Repositorio"):
+//  Para ligar, escreva no ⚙️ (campo "Repositorio"):
 //     seu-usuario/barbearia-do-jota
 //  ou preencha GITHUB_USER e GITHUB_REPO no topo deste arquivo.
 // ============================================================
@@ -496,7 +496,7 @@ async function buscarUltimaVersao() {
   const url = `https://api.github.com/repos/${encodeURIComponent(r.user)}/${encodeURIComponent(r.repo)}/releases/latest`;
   const resp = await fetch(url, { headers: { Accept: 'application/vnd.github+json' } });
   if (resp.status === 404) {
-    throw new Error('repositÃ³rio nÃ£o encontrado ou privado (404)');
+    throw new Error('repositório não encontrado ou privado (404)');
   }
   if (resp.status === 403) {
     throw new Error('limite de consultas do GitHub atingido (403)');
@@ -512,26 +512,26 @@ function explicarErroGithub(erro, silencioso) {
   const alvo = r ? `${r.user}/${r.repo}` : '(vazio)';
 
   if (/404/.test(msg)) {
-    return 'NÃ£o achei o repositÃ³rio ' + alvo + '.\n'
-      + 'Ele precisa ser PÃšBLICO no GitHub:\n'
-      + 'Settings â†’ Danger Zone â†’ Change visibility â†’ Public.\n'
+    return 'Não achei o repositório ' + alvo + '.\n'
+      + 'Ele precisa ser PÚBLICO no GitHub:\n'
+      + 'Settings → Danger Zone → Change visibility → Public.\n'
       + 'E precisa existir uma Release (tag v1.0.0 ou maior).';
   }
   if (/403/.test(msg)) {
     return 'O GitHub bloqueou por excesso de consultas.\nTente de novo em alguns minutos.';
   }
   if (/Failed to fetch|NetworkError/i.test(msg)) {
-    return 'O celular estÃ¡ sem internet.\nAs atualizaÃ§Ãµes sÃ³ funcionam com internet.';
+    return 'O celular está sem internet.\nAs atualizações só funcionam com internet.';
   }
   if (!r) {
-    return 'Nenhum repositÃ³rio configurado.\\nPreencha em âš™ï¸ â†’ RepositÃ³rio do GitHub.';
+    return 'Nenhum repositório configurado.\\nPreencha em ⚙️ → Repositório do GitHub.';
   }
   return msg;
 }
 
 async function checarAtualizacao({ silencioso = true } = {}) {
   if (!repoSalvo()) {
-    if (!silencioso) toast('Preencha o repositÃ³rio do GitHub nos ajustes.');
+    if (!silencioso) toast('Preencha o repositório do GitHub nos ajustes.');
     return null;
   }
   try {
@@ -547,7 +547,7 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     if (!forcar && !versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
 
     const adiado = Number(localStorage.getItem(LS_UPDATE_PARA) || 0);
-    // se for forÃ§ado, ignora o "Depois" â€” sempre aparece
+    // se for forçado, ignora o "Depois" — sempre aparece
     if (!forcar && silencioso && adiado > Date.now() - 5 * 60 * 1000) return null;   // "Depois" lembra por 5 minutos
 
     const asset = (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
@@ -562,14 +562,14 @@ async function checarAtualizacao({ silencioso = true } = {}) {
 
 // popup de aviso de problema (sem ser o de "atualizacao disponivel")
 function mostrarAvisoUpdate(texto) {
-  $('updVersao').textContent = 'NÃ£o consegui procurar atualizaÃ§Ã£o';
-  $('updAtual').textContent = `VersÃ£o ${CONFIG.APP_VERSION}`;
+  $('updVersao').textContent = 'Não consegui procurar atualização';
+  $('updAtual').textContent = `Versão ${CONFIG.APP_VERSION}`;
   $('updNotas').innerHTML = String(texto).replace(/</g, '&lt;').replace(/\n/g, '<br>');
   $('btnAtualizar').onclick = () => {
     const r = repoSalvo();
     if (r) window.open(`https://github.com/${r.user}/${r.repo}/releases`, '_blank', 'noopener');
   };
-  $('btnAtualizar').textContent = 'ðŸ”— Abrir o GitHub';
+  $('btnAtualizar').textContent = '🔗 Abrir o GitHub';
   $('btnDepois').onclick = () => $('modalUpdate').classList.add('hidden');
   $('modalUpdate').classList.remove('hidden');
 }
@@ -577,21 +577,21 @@ function mostrarAvisoUpdate(texto) {
 function mostrarAtualizacao(versao, release, asset, forcar) {
   const notas = (release.body || '').trim().slice(0, 400);
   if (forcar) {
-    $('updVersao').textContent = `âš ï¸ AtualizaÃ§Ã£o obrigatÃ³ria ${versao}`;
-    $('updAtual').textContent = `VocÃª estÃ¡ na versÃ£o ${CONFIG.APP_VERSION} (serÃ¡ substituÃ­da)`;
+    $('updVersao').textContent = `⚠️ Atualização obrigatória ${versao}`;
+    $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION} (será substituída)`;
   } else {
-    $('updVersao').textContent = `VersÃ£o ${versao} disponÃ­vel`;
-    $('updAtual').textContent = `VocÃª estÃ¡ na versÃ£o ${CONFIG.APP_VERSION}`;
+    $('updVersao').textContent = `Versão ${versao} disponível`;
+    $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION}`;
   }
   $('updNotas').innerHTML = notas
     ? notas.replace(/</g, '&lt;').replace(/\n/g, '<br>')
-    : 'CorreÃ§Ãµes e melhorias nesta versÃ£o.';
+    : 'Correções e melhorias nesta versão.';
   const link = asset ? asset.browser_download_url : release.html_url;
-  $('btnAtualizar').textContent = 'â¬‡ï¸ Atualizar agora';
+  $('btnAtualizar').textContent = '⬇️ Atualizar agora';
   $('btnAtualizar').onclick = () => baixarEInstalar(link);
   $('btnDepois').onclick = () => {
     if (forcar) {
-      // forÃ§ado: nÃ£o deixa adiar, sÃ³ fecha
+      // forçado: não deixa adiar, só fecha
       $('modalUpdate').classList.add('hidden');
       return;
     }
@@ -603,7 +603,7 @@ function mostrarAtualizacao(versao, release, asset, forcar) {
 }
 
 // ============================================================
-//  ATUALIZAR: baixa o APK e abre a instalaÃ§Ã£o do Android
+//  ATUALIZAR: baixa o APK e abre a instalação do Android
 // ============================================================
 function baixarEInstalar(url) {
   if (!url) return;
@@ -616,29 +616,29 @@ function baixarEInstalar(url) {
     return;
   }
 
-  $('updNotas').textContent = 'Baixando a atualizaÃ§Ã£o. Ela serÃ¡ instalada em seguida...';
+  $('updNotas').textContent = 'Baixando a atualização. Ela será instalada em seguida...';
   $('btnAtualizar').disabled = true;
-  $('btnAtualizar').textContent = 'â³ Baixando...';
+  $('btnAtualizar').textContent = '⏳ Baixando...';
 
   nativo.instalar({ url })
     .then(() => {
-      $('btnAtualizar').textContent = 'ðŸ“¥ Abrir pasta de downloads';
+      $('btnAtualizar').textContent = '📥 Abrir pasta de downloads';
       $('btnAtualizar').disabled = false;
       $('btnAtualizar').onclick = () => nativo.abrirDownloads().catch(() => {});
       $('updNotas').textContent =
-        'Download iniciado. Se a instalaÃ§Ã£o nÃ£o abrir sozinha, toque no arquivo na pasta Downloads.';
+        'Download iniciado. Se a instalação não abrir sozinha, toque no arquivo na pasta Downloads.';
     })
     .catch((e) => {
       $('btnAtualizar').disabled = false;
-      $('btnAtualizar').textContent = 'â¬‡ï¸ Atualizar agora';
+      $('btnAtualizar').textContent = '⬇️ Atualizar agora';
       $('btnAtualizar').onclick = () => baixarEInstalar(url);
-      $('updNotas').textContent = 'NÃ£o consegui baixar agora: ' + (e && e.message ? e.message : 'erro')
+      $('updNotas').textContent = 'Não consegui baixar agora: ' + (e && e.message ? e.message : 'erro')
         + '. Tente de novo com a internet ligada.';
     });
 }
 
 // ============================================================
-//  AJUSTES â€” o barbeiro troca o endereco do servidor pelo proprio
+//  AJUSTES — o barbeiro troca o endereco do servidor pelo proprio
 //  app, sem precisar refazer o APK. Fica salvo no aparelho.
 // ============================================================
 const LS_SERVIDOR = 'barbearia_servidor_v1';
@@ -651,71 +651,12 @@ function servidores() {
 function abrirAjustes() {
   $('appVersao').textContent = CONFIG.APP_VERSION;
   $('updStatus').textContent = repoSalvo()
-    ? `VersÃ£o mais recente: ${CONFIG.APP_VERSION}`
-    : 'AtualizaÃ§Ãµes automÃ¡ticas desligadas.';
+    ? `Versão mais recente: ${CONFIG.APP_VERSION}`
+    : 'Atualizações automáticas desligadas.';
   $('modalAjustes').classList.remove('hidden');
-  // mostra o modo tecnico so se o barbeiro ja o abriu antes
-  if (localStorage.getItem('barbearia_tecnico') === '1') {
-    $('blocoTecnico').classList.remove('hidden');
-    $('btnModoTecnico').classList.add('hidden');
-  } else {
-    $('blocoTecnico').classList.add('hidden');
-    $('btnModoTecnico').classList.remove('hidden');
-  }
-}
-
-function abrirModoTecnico() {
-  localStorage.setItem('barbearia_tecnico', '1');
-  $('blocoTecnico').classList.remove('hidden');
-  $('btnModoTecnico').classList.add('hidden');
 }
 
 function fecharAjustes() { $('modalAjustes').classList.add('hidden'); }
-
-async function testarServidor() {
-  const valor = $('inpServidor').value.trim().replace(/\/+$/, '');
-  if (!valor) return;
-  $('ajustesStatus').textContent = 'Testando...';
-  try {
-    const r = await tentarFetch(valor, '/api/health', null, 8000);
-    apiBaseAtual = valor;
-    $('ajustesStatus').textContent = `âœ… Conectado! Modo: ${r.modo || '-'} Â· Sinal: R$ ${Number(r.sinal || 10).toFixed(2)}`;
-  } catch (e) {
-    apiBaseAtual = null;
-    $('ajustesStatus').textContent = `âŒ NÃ£o respondeu (${e.message}). Confira o endereÃ§o e se o servidor estÃ¡ ligado.`;
-  }
-}
-
-function salvarServidor() {
-  const valor = $('inpServidor').value.trim().replace(/\/+$/, '');
-  if (!valor) { toast('Digite o endereÃ§o do servidor.'); return; }
-  localStorage.setItem(LS_SERVIDOR, valor);
-  apiBaseAtual = null;
-  toast('EndereÃ§o salvo!');
-  testarServidor();
-}
-
-// liga/desliga as atualizacoes automaticas e confere na hora
-async function salvarRepo() {
-  const valor = $('inpRepo').value.trim();
-  if (valor) localStorage.setItem(LS_REPO, valor);
-  else localStorage.removeItem(LS_REPO);
-  const r = repoSalvo();
-  if (!r) {
-    $('updStatus').textContent = 'Sem repositÃ³rio â€” atualizaÃ§Ãµes desligadas.';
-    toast('AtualizaÃ§Ãµes desligadas.');
-    return;
-  }
-  $('updStatus').textContent = 'Procurando atualizaÃ§Ã£o...';
-  const achou = await checarAtualizacao({ silencioso: false });
-  if (achou) {
-    $('updStatus').textContent = `AtualizaÃ§Ã£o ${achou} disponÃ­vel!`;
-  } else {
-    $('updStatus').textContent = document.getElementById('modalUpdate').classList.contains('hidden')
-      ? `VocÃª estÃ¡ na versÃ£o mais recente (${CONFIG.APP_VERSION}).`
-      : 'AtualizaÃ§Ã£o disponÃ­vel!';
-  }
-}
 
 // ---------- chamada ao backend ----------
 // tenta os enderecos da lista e fica no primeiro que responder
@@ -768,7 +709,7 @@ async function conferirPagamento() {
       pixBooking = updateBooking(pixBooking.id, { pixStatus: 'pago', status: 'confirmado' });
       pararConferencia();
       renderPixArea();
-      toast('âœ… Pagamento confirmado! Pode enviar no WhatsApp.');
+      toast('✅ Pagamento confirmado! Pode enviar no WhatsApp.');
       return;
     }
     if (r && r.ambiguo) {
@@ -801,7 +742,7 @@ function renderPixArea() {
   const pago = b.pixStatus === 'pago';
 
   $('pixText2').textContent =
-    `Sinal de ${BRL(signal)} â€” ${b.serviceName} Â· ${b.dateLabel} Ã s ${b.time}`;
+    `Sinal de ${BRL(signal)} — ${b.serviceName} · ${b.dateLabel} às ${b.time}`;
   $('pixValor').textContent = BRL(signal);
 
   if (pago) {
@@ -809,7 +750,7 @@ function renderPixArea() {
     $('pixGerando').classList.add('hidden');
     $('pixPronto').classList.remove('hidden');
     $('pixOffline').classList.add('hidden');
-    $('pixEspera').innerHTML = 'âœ… <b>Pagamento confirmado pela InfinitePay</b>';
+    $('pixEspera').innerHTML = '✅ <b>Pagamento confirmado pela InfinitePay</b>';
     $('btnPagarAgora').classList.add('hidden');
     $('pixCode').value = 'PAGAMENTO CONFIRMADO';
   }
@@ -825,7 +766,7 @@ function renderPixArea() {
     showFloatWpp(b);
   } else {
     $('pixResultadoTexto').textContent =
-      'Assim que o Pix cair, esta tela muda sozinha e o botÃ£o do WhatsApp aparece.';
+      'Assim que o Pix cair, esta tela muda sozinha e o botão do WhatsApp aparece.';
   }
 }
 
@@ -833,13 +774,13 @@ function renderPixArea() {
 function renderAmbiguo(aviso) {
   $('pixGerando').classList.add('hidden');
   $('pixPronto').classList.add('hidden');
-  $('pixEspera').textContent = 'âš ï¸ NÃ£o foi possÃ­vel confirmar automaticamente.';
+  $('pixEspera').textContent = '⚠️ Não foi possível confirmar automaticamente.';
   const res = $('pixResultado');
   res.classList.remove('hidden');
   res.classList.remove('pagavel');
-  $('btnWppFinal').classList.remove('hidden');   // falar com a barbearia, nÃ£o Ã© confirmar
+  $('btnWppFinal').classList.remove('hidden');   // falar com a barbearia, não é confirmar
   $('pixResultadoTexto').textContent =
-    (aviso || 'Este link de pagamento jÃ¡ estava marcado como pago.')
+    (aviso || 'Este link de pagamento já estava marcado como pago.')
     + ' Fale com a barbearia pelo WhatsApp para confirmar o seu sinal.';
   showFloatWpp(pixBooking);
 }
@@ -859,7 +800,7 @@ function mostrarCobranca(url) {
   iniciarConferencia();
 }
 
-// ---------- QR grande em uma janela sÃ³ ----------
+// ---------- QR grande em uma janela só ----------
 function abrirQrGrande() {
   const url = $('pixCode').value;
   if (!url) return;
@@ -881,25 +822,25 @@ function mostrarOffline(motivo) {
   $('pixPronto').classList.add('hidden');
   $('pixOffline').classList.remove('hidden');
   $('pixOfflineMsg').innerHTML =
-    '<b>O Pix automÃ¡tico nÃ£o estÃ¡ funcionando agora.</b><br>'
-    + 'O site nÃ£o conseguiu falar com o servidor de pagamento.<br>'
-    + 'Se vocÃª estÃ¡ no computador: abra <b>iniciar-tudo.bat</b>.<br>'
-    + 'Se vocÃª estÃ¡ no aplicativo: toque na <b>engrenagem âš™ï¸</b> lÃ¡ em cima e confira o endereÃ§o do servidor.<br><br>'
-    + 'Enquanto isso vocÃª pode pagar direto na chave abaixo:';
+    '<b>O Pix automático não está funcionando agora.</b><br>'
+    + 'O site não conseguiu falar com o servidor de pagamento.<br>'
+    + 'Se você está no computador: abra <b>iniciar-tudo.bat</b>.<br>'
+    + 'Se você está no aplicativo: toque na <b>engrenagem ⚙️</b> lá em cima e confira o endereço do servidor.<br><br>'
+    + 'Enquanto isso você pode pagar direto na chave abaixo:';
   const chave = PIX_KEY_OK() ? CONFIG.PIX_KEY : '';
   $('pixManual').classList.toggle('hidden', !chave);
   $('pixChaveManual').value = chave;
   if (!chave) {
     $('pixOfflineMsg').innerHTML =
-      '<b>O Pix automÃ¡tico nÃ£o estÃ¡ funcionando agora.</b><br>'
+      '<b>O Pix automático não está funcionando agora.</b><br>'
       + 'Fale com a barbearia pelo WhatsApp para concluir seu agendamento.';
   }
-  $('pixDebug').textContent = `Motivo: ${motivo} Â· endereÃ§os tentados: ${servidores().join(', ')}`;
+  $('pixDebug').textContent = `Motivo: ${motivo} · endereços tentados: ${servidores().join(', ')}`;
   showPixQr('');
   console.warn('[pix] backend indisponivel:', motivo);
 }
 
-// testa a conexÃ£o com o servidor e avisa no console o que achou
+// testa a conexão com o servidor e avisa no console o que achou
 async function checarServidor() {
   for (const base of servidores()) {
     try {
@@ -914,7 +855,7 @@ async function checarServidor() {
   return false;
 }
 
-// Cliente nÃ£o pagou (ou desistiu): volta para a etapa 4 sem confirmar nada
+// Cliente não pagou (ou desistiu): volta para a etapa 4 sem confirmar nada
 function clientNotPaid() {
   pararConferencia();
   showStep(4);
@@ -957,7 +898,7 @@ function limparEstadoPagamento() {
   window.scrollTo(0, 0);
 }
 
-// BotÃ£o flutuante que reaparece quando o cliente volta ao site
+// Botão flutuante que reaparece quando o cliente volta ao site
 function showFloatWpp(b) {
   const f = $('pixFloat');
   if (!f || !b) return;
@@ -969,20 +910,20 @@ function showFloatWpp(b) {
   f.classList.add('show');
 }
 
-// Cliente nÃ£o pagou ainda
+// Cliente não pagou ainda
 function clientNotPaid() {
   renderPixArea();
   toast('Tudo bem. Pague o Pix quando puder e volte aqui.');
 }
 
 // ===== quando volta ao site: reconfere o pagamento pendente =====
-// SÃ³ libera o WhatsApp depois que a InfinitePay confirmar. Nunca sozinho.
+// Só libera o WhatsApp depois que a InfinitePay confirmar. Nunca sozinho.
 function checkPixOnLoad() {
   const list = loadBookings();
   // so mostra o botao flutuante se houver pagamento CONFIRMADO
   const pago = list.find((b) => b.payMethod === 'pix' && b.pixStatus === 'pago');
   if (pago) { showFloatWpp(pago); return; }
-  // nao navega para a etapa 5 â€” o usuario comeca do zero
+  // nao navega para a etapa 5 — o usuario comeca do zero
 }
 
 // ===== GALERIA DE FOTOS (carrossel) =====
@@ -993,7 +934,7 @@ function initCarrossel() {
   const dots = $('carDots');
   if (!items.length) return;
 
-  // remove fotos que nÃ£o existirem no servidor
+  // remove fotos que não existirem no servidor
   items.forEach((fig) => {
     const img = fig.querySelector('img');
     img.addEventListener('error', () => {
@@ -1004,7 +945,7 @@ function initCarrossel() {
 
   const validos = () => [...track.querySelectorAll('.car-item')];
 
-  // Ã­ndice da foto que estÃ¡ mais centralizada
+  // índice da foto que está mais centralizada
   const indiceAtual = () => {
     const list = validos();
     const centro = track.scrollLeft + track.clientWidth / 2;
@@ -1016,7 +957,7 @@ function initCarrossel() {
     return melhor;
   };
 
-  // Rola SÃ“ o carrossel na horizontal â€” nunca mexe na rolagem da pÃ¡gina
+  // Rola SÓ o carrossel na horizontal — nunca mexe na rolagem da página
   const irPara = (i, suave = true) => {    const list = validos();
     if (!list.length) return;
     const el = list[Math.max(0, Math.min(list.length - 1, i))];
@@ -1038,7 +979,7 @@ function initCarrossel() {
   // atualiza as bolinhas depois que a rolagem terminar (com ou sem evento de scroll)
   const agendarDots = () => { clearTimeout(dotsTimer); dotsTimer = setTimeout(paintDots, 120); };
 
-  // avanÃ§o automÃ¡tico: sÃ³ enquanto a galeria estiver visÃ­vel na tela
+  // avanço automático: só enquanto a galeria estiver visível na tela
   let timer = null;
   const estado = { visivel: false };
   const iniciarAuto = () => {
@@ -1075,7 +1016,7 @@ function initCarrossel() {
   paintDots();
 }
 
-// ===== CARTÃƒO "HORÃRIOS HOJE" (topo do site) =====
+// ===== CARTÃO "HORÁRIOS HOJE" (topo do site) =====
 const slotMinutesOf = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const OPEN_MIN = slotMinutesOf('09:00');
 const CLOSE_MIN = slotMinutesOf('21:00');
@@ -1091,21 +1032,21 @@ async function renderToday() {
   label.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
   if (now.getDay() === CONFIG.CLOSED_WEEKDAY) {
-    box.innerHTML = '<span class="closed-big">ðŸ”´ Fechado hoje</span><p class="tiny">Voltamos amanhÃ£ Ã s 09:00</p>';
+    box.innerHTML = '<span class="closed-big">🔴 Fechado hoje</span><p class="tiny">Voltamos amanhã às 09:00</p>';
     return;
   }
   if (mins < OPEN_MIN) {
-    box.innerHTML = `<span class="closed-big">ðŸ”´ Abre Ã s 09:00</span><p class="tiny">Volte em ${Math.floor((OPEN_MIN - mins) / 60)}h${String((OPEN_MIN - mins) % 60).padStart(2, '0')}</p>`;
+    box.innerHTML = `<span class="closed-big">🔴 Abre às 09:00</span><p class="tiny">Volte em ${Math.floor((OPEN_MIN - mins) / 60)}h${String((OPEN_MIN - mins) % 60).padStart(2, '0')}</p>`;
     return;
   }
   if (mins > CLOSE_MIN) {
-    box.innerHTML = '<span class="closed-big">ðŸ”´ Encerrado</span><p class="tiny">Voltamos amanhÃ£ Ã s 09:00</p>';
+    box.innerHTML = '<span class="closed-big">🔴 Encerrado</span><p class="tiny">Voltamos amanhã às 09:00</p>';
     return;
   }
 
   const futuras = TIME_SLOTS.filter((t) => slotMinutesOf(t) > mins);
   if (!futuras.length) {
-    box.innerHTML = '<span class="closed-big">ðŸ”´ Encerrado</span><p class="tiny">Sem mais vagas hoje</p>';
+    box.innerHTML = '<span class="closed-big">🔴 Encerrado</span><p class="tiny">Sem mais vagas hoje</p>';
     return;
   }
   const list = await loadBookings();
@@ -1120,7 +1061,7 @@ async function renderToday() {
     showStep(3);
     renderTimes();
     renderResume();
-    toast(`HorÃ¡rio ${el.dataset.t} selecionado.`);
+    toast(`Horário ${el.dataset.t} selecionado.`);
   }));
 }
 document.querySelectorAll('.payopt').forEach((el) =>
@@ -1154,7 +1095,7 @@ $('btnCopiarChave').onclick = async () => {
 };
 $('btnCopyPix').onclick = async () => {
   const code = $('pixCode').value;
-  if (!code) return toast('Sem cÃ³digo para copiar.');
+  if (!code) return toast('Sem código para copiar.');
   try { await navigator.clipboard.writeText(code); toast('Link de pagamento copiado!'); }
   catch { $('pixCode').select(); toast('Segure e copie o link.'); }
 };
@@ -1173,7 +1114,7 @@ $('btnWppFinal').onclick = () => {
   }
   $('btnWppFinal').classList.add('hidden');
 };
-$('btnFalarBarbearia').href = `https://wa.me/${String(CONFIG.BARBER_WHATSAPP).replace(/\D/g, '')}?text=${encodeURIComponent('OlÃ¡! Preciso de ajuda com um agendamento.')}`;
+$('btnFalarBarbearia').href = `https://wa.me/${String(CONFIG.BARBER_WHATSAPP).replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Preciso de ajuda com um agendamento.')}`;
 $('btnAjustes').onclick = abrirAjustes;
 $('btnFecharAjustes').onclick = fecharAjustes;
 // modo tecnico removido - nao aparece mais nada de servidor ou repositorio
@@ -1195,43 +1136,29 @@ $('btnVerificarUpdate').onclick = async () => {
   $('modalAjustes').classList.add('hidden');
   const achou = await checarAtualizacao({ silencioso: false });
   if (achou) {
-    $('updStatus').textContent = `AtualizaÃ§Ã£o ${achou} disponÃ­vel!`;
+    $('updStatus').textContent = `Atualização ${achou} disponível!`;
   } else if (document.getElementById('modalUpdate').classList.contains('hidden')) {
-    $('updStatus').textContent = `VocÃª estÃ¡ na versÃ£o mais recente (${CONFIG.APP_VERSION}).`;
+    $('updStatus').textContent = `Você está na versão mais recente (${CONFIG.APP_VERSION}).`;
     // reabre os ajustes para mostrar o resultado
     $('modalAjustes').classList.remove('hidden');
   } else {
-    $('updStatus').textContent = 'AtualizaÃ§Ã£o disponÃ­vel!';
+    $('updStatus').textContent = 'Atualização disponível!';
   }
 };
 
-// modo forÃ§ado: nÃ£o precisa de botÃ£o na tela (use o [FORCAR] nas notas da release)
+// modo forçado: não precisa de botão na tela (use o [FORCAR] nas notas da release)
 // (o botao btnForcarUpdate foi removido do HTML)
 $('btnVerQr').onclick = abrirQrGrande;
 $('btnFecharQr').onclick = () => $('modalQr').classList.add('hidden');
 
 // parceria
 $('btnParceria').onclick = () => {
-  $('btnWppParceria').href = `https://wa.me/5521980204832?text=${encodeURIComponent('OlÃ¡! Vim do aplicativo da Barbearia do Jota.')}`;
+  $('btnWppParceria').href = `https://wa.me/5521980204832?text=${encodeURIComponent('Olá! Vim do aplicativo da Barbearia do Jota.')}`;
   $('modalParceria').classList.remove('hidden');
 };
 $('btnFecharParceria').onclick = () => $('modalParceria').classList.add('hidden');
 
-// modo tecnico: escondido por padrao, aparece com 5 toques no logo
-let toquesLogo = 0, timerToques;
-$('logoTecnico') && ($('logoTecnico').onclick = abrirModoTecnico);
-document.querySelector('.brand img').addEventListener('click', () => {
-  toquesLogo++;
-  clearTimeout(timerToques);
-  timerToques = setTimeout(() => { toquesLogo = 0; }, 1500);
-  if (toquesLogo >= 5) { toquesLogo = 0; abrirModoTecnico(); }
-});
-function abrirModoTecnico() {
-  $('blocoTecnico').classList.remove('hidden');
-  $('btnModoTecnico').classList.add('hidden');
-}
-// modo tecnico: escondido por padrao, aparece com 5 toques no logo
-// (o botao visivel foi removido, mas a funcionalidade continua)
+// modo tecnico removido — nada de servidor/repositorio na tela
 document.querySelectorAll('.payopt').forEach((el) => el.onclick = () => { payMethod = el.dataset.pay; renderPay(); renderResume(); });
 $('calPrev').onclick = () => shiftMonth(-1);
 $('calNext').onclick = () => shiftMonth(1);
@@ -1243,21 +1170,21 @@ $('calNext').onclick = () => shiftMonth(1);
     renderResume();
   });
 });
-$('locAddress').textContent = `${CONFIG.BARBER_ADDRESS} Â· Terâ€“Dom 09hâ€“21h Â· Seg fechada`;
+$('locAddress').textContent = `${CONFIG.BARBER_ADDRESS} · Ter–Dom 09h–21h · Seg fechada`;
 $('aboutText').textContent = CONFIG.ABOUT;
-$('aboutHours').textContent = `ðŸ“ ${CONFIG.BARBER_ADDRESS} Â· â° Terâ€“Dom 09hâ€“21h Â· Seg fechada`;
+$('aboutHours').textContent = `📍 ${CONFIG.BARBER_ADDRESS} · ⏰ Ter–Dom 09h–21h · Seg fechada`;
 const btnMaps = document.getElementById('btnMaps');
 if (btnMaps) {
   btnMaps.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${CONFIG.BARBER_NAME} ${CONFIG.BARBER_ADDRESS}`);
 }
-// links "Agendar" vÃ£o direto para a barra de etapas (sem pular pro meio da pÃ¡gina)
+// links "Agendar" vão direto para a barra de etapas (sem pular pro meio da página)
 document.querySelectorAll('a[href="#servicos"]').forEach((a) => {
   a.addEventListener('click', (e) => { e.preventDefault(); showStep(1); });
 });
 // ===== tarja do topo =====
-// No APK, o Android Ã s vezes desenha o site por baixo da barra de notificaÃ§Ã£o
-// e o navegador nÃ£o avisa a altura. Quando isso acontece reservamos um mÃ­nimo,
-// senÃ£o o logo e o menu ficam escondidos atrÃ¡s dos Ã­cones do celular.
+// No APK, o Android às vezes desenha o site por baixo da barra de notificação
+// e o navegador não avisa a altura. Quando isso acontece reservamos um mínimo,
+// senão o logo e o menu ficam escondidos atrás dos ícones do celular.
 function ajustarTarjaDoTopo() {
   const ehApk = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   if (!ehApk) return;
@@ -1304,6 +1231,6 @@ window.addEventListener('load', () => {
 });
 window.addEventListener('resize', ajustarTarjaDoTopo);
 window.addEventListener('orientationchange', ajustarTarjaDoTopo);
-// mantÃ©m o card do topo e os horÃ¡rios frescos se a aba ficar aberta
+// mantém o card do topo e os horários frescos se a aba ficar aberta
 setInterval(() => { renderToday(); }, 60000);
-document.title = `${CONFIG.BARBER_NAME} â€” Agendamento Online`;
+document.title = `${CONFIG.BARBER_NAME} — Agendamento Online`;
