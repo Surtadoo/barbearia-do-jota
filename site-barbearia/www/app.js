@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.12',
+  APP_VERSION: '1.0.13',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -276,6 +276,8 @@ async function renderTimes() {
     if (hint0) hint0.textContent = '';
     return;
   }
+  // o barbeiro forcou ABERTO: hoje o horario da janela nao bloqueia (só vence o que passou)
+  const forcouAberto = isToday && statusLoja.modo === 'manual' && statusLoja.aberto === true;
   const abreM = minutosDe(abreAsLoja());
   const fechaM = minutosDe(fechaAsLoja());
   const list = await loadBookings();
@@ -285,7 +287,7 @@ async function renderTimes() {
     const busy = list.some((b) => b.dateKey === dayKey && b.time === t && bookingHoldsSlot(b));
     const expired = isToday && slotMinutes < currentMinutes;
     // fora do horario definido pelo barbeiro no painel
-    if (slotMinutes < abreM || slotMinutes > fechaM) return '';
+    if (!forcouAberto && (slotMinutes < abreM || slotMinutes > fechaM)) return '';
     if (expired) return '';
     return `<button class="slot ${t === time ? 'selected' : ''} ${busy ? 'busy' : ''}" ${busy ? 'disabled' : ''}>${t}</button>`;
   }).join('');
@@ -361,8 +363,11 @@ async function confirmMoney() {
     status: 'confirmado', createdAt: new Date().toISOString(),
   };
   const list = loadBookings(); list.unshift(booking); saveBookings(list);
-  filaSync(booking);
   await renderTimes();
+  // manda AGORA para o Painel pela internet (so entra na fila se falhar)
+  let enviado = false;
+  try { enviado = await mandarAgendamento(booking); } catch { /* entra na fila */ }
+  if (!enviado) filaSync(booking);
   toast('Agendamento salvo! Abrindo WhatsApp...');
   openWhatsApp(booking);
   showStep(1);
@@ -449,7 +454,10 @@ async function generatePixBooking() {
     status: 'aguardando pagamento', createdAt: new Date().toISOString(),
   };
   const list = loadBookings(); list.unshift(pixBooking); saveBookings(list);
-  filaSync(pixBooking);
+  // manda AGORA para o Painel pela internet (so entra na fila se falhar)
+  let enviadoPix = false;
+  try { enviadoPix = await mandarAgendamento(pixBooking); } catch { /* entra na fila */ }
+  if (!enviadoPix) filaSync(pixBooking);
   showStep(5);
   renderPixArea();
 
@@ -720,14 +728,19 @@ function filaSync(b) {
 }
 
 // entrega um agendamento no canal da internet + servidor do PC
+// (com limite de tempo para nao travar a tela esperando)
 async function mandarAgendamento(b) {
   let entregue = false;
   try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
     const r = await fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ t: 'b', b }),
+      signal: ctrl.signal,
     });
+    clearTimeout(t);
     entregue = r.ok;
   } catch { /* sem internet */ }
   try { await chamarApi('/api/agendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); } catch { /* PC desligado, tudo bem */ }
@@ -756,8 +769,8 @@ async function descarregarSync() {
 }
 
 // ---------- status aberto/fechado vindo do painel do barbeiro ----------
-// O Painel publica o status no canal (ntfy); aqui a gnt pega a ultima
-// mensagem da ultima 12 horas e mantem em casa para abrir mais rapido.
+// O Painel publica no canal (ntfy). O site fica OUVINDO ao vivo (SSE)
+// e ainda faz uma consulta de segurança a cada 30 segundos.
 let statusLoja = ((tem) => {
   try {
     const s = JSON.parse(localStorage.getItem('barbearia_status_loja_v1') || 'null');
@@ -766,29 +779,58 @@ let statusLoja = ((tem) => {
   } catch { /* tudo bem */ }
   return { modo: 'auto', aberto: null, abreAs: null, fechaAs: null, ok: false };
 })();
+
+// aplica o status novo e redesenha a loja na hora
+function aplicarStatusLoja(s) {
+  statusLoja = { ...s, ok: true };
+  try { localStorage.setItem('barbearia_status_loja_v1', JSON.stringify(statusLoja)); } catch { /* ignora */ }
+  renderToday();
+  renderTimes();
+  renderCalendar();
+}
+
+// decodifica cada linha do canal (chega por SSE ou pela consulta)
+async function processarCanal(texto) {
+  for (const linha of String(texto || '').split('\n')) {
+    let o = null, p = null;
+    try { o = JSON.parse(linha); } catch { continue; }
+    if (!o || o.event !== 'message' || !o.message) continue;
+    try { p = JSON.parse(o.message); } catch { continue; }
+    if (p && p.t === 's' && p.s) {
+      // mudanca de aberto/fechado do barbeiro
+      if ((Number(p.s.ts) || 0) > (Number(statusLoja.ts) || 0)) aplicarStatusLoja(p.s);
+    } else if (p && p.t === 'p' && p.b && p.b.id && p.b.pixStatus === 'pago') {
+      // o servidor do PC confirmou o Pix: marca pago e libera o botao do WhatsApp
+      const atual = loadBookings().find((b) => b.id === p.b.id);
+      if (atual && atual.pixStatus !== 'pago') {
+        updateBooking(p.b.id, { pixStatus: 'pago', status: p.b.status || 'confirmado' });
+        if (pixBooking && pixBooking.id === p.b.id) {
+          pixBooking.pixStatus = 'pago';
+          pixBooking.status = 'confirmado';
+          renderPixArea();
+        }
+        checkPixOnLoad();
+      }
+    }
+  }
+}
+
+// canal AO VIVO: o aberto/fechado muda no site NA HORA (nao depende do PC)
+let sseLoja = null;
+function ligarCanalCliente() {
+  try { if (sseLoja) sseLoja.close(); } catch { /* nada */ }
+  try {
+    sseLoja = new EventSource(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/sse`);
+    sseLoja.onmessage = (ev) => { processarCanal(ev.data); };
+    // se cair, o navegador reconecta sozinho
+  } catch { /* sem internet — a consulta de seguranca cobre */ }
+}
+
+// consulta de seguranca (caso o canal ao vivo nao esteja aberto)
 async function carregarStatusLoja() {
   try {
     const resp = await fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/json?poll=1&since=12h`);
-    const texto = await resp.text();
-    let melhor = null;
-    for (const linha of texto.split('\n')) {
-      try {
-        const o = JSON.parse(linha);
-        if (!o || o.event !== 'message' || !o.message) continue;
-        const s = JSON.parse(o.message);
-        if (s && s.t === 's' && s.s && (!melhor || (Number(s.s.ts) || 0) > melhor.ts)) melhor = s.s;
-      } catch { /* linha suja, pula */ }
-    }
-    if (melhor && (Number(melhor.ts) || 0) > 0) {
-      const velho = statusLoja.ts || 0;
-      if ((melhor.ts || 0) > velho) {
-        statusLoja = { ...melhor, ok: true };
-        try { localStorage.setItem('barbearia_status_loja_v1', JSON.stringify(statusLoja)); } catch { /* ignora */ }
-        renderToday();
-        renderTimes();
-        renderCalendar();
-      }
-    }
+    await processarCanal(await resp.text());
   } catch { /* sem internet — usa o que ja tenho em casa */ }
 }
 const minutosDe = (t) => { const [h, m] = String(t || '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
@@ -1146,6 +1188,30 @@ async function renderToday() {
     box.innerHTML = '<span class="closed-big">🔴 Fechado agora</span><p class="tiny">Fale com a barbearia pelo WhatsApp para confirmar a vaga.</p>';
     return;
   }
+  // o barbeiro forcou ABERTO: a loja esta aberta agora, mesmo fora do horario de sempre
+  if (statusLoja.modo === 'manual' && statusLoja.aberto === true) {
+    label.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+    const futurasAberto = TIME_SLOTS.filter((t) => slotMinutesOf(t) > mins);
+    if (!futurasAberto.length) {
+      box.innerHTML = '<span class="closed-big">🟢 Aberto</span><p class="tiny">Acabaram as vagas de hoje — amanhã abre às ' + abreAsLoja() + '</p>';
+      return;
+    }
+    const listA = await loadBookings();
+    box.innerHTML = futurasAberto.map((t) => {
+      const busy = listA.some((b) => b.dateKey === hojeKey && b.time === t && bookingHoldsSlot(b));
+      return `<button class="slot ${busy ? 'busy' : ''}" data-t="${t}" ${busy ? 'disabled' : ''}>${t}</button>`;
+    }).join('');
+    box.querySelectorAll('.slot:not(.busy)').forEach((el) => (el.onclick = () => {
+      if (serviceIds.length === 0) { toast('Escolha o corte primeiro.'); document.getElementById('servicos').scrollIntoView({ behavior: 'smooth' }); return; }
+      dayKey = hojeKey;
+      time = el.dataset.t;
+      showStep(3);
+      renderTimes();
+      renderResume();
+      toast(`Horário ${el.dataset.t} selecionado.`);
+    }));
+    return;
+  }
   if (now.getDay() === CONFIG.CLOSED_WEEKDAY) {
     box.innerHTML = '<span class="closed-big">🔴 Fechado hoje</span><p class="tiny">Voltamos amanhã às 09:00</p>';
     return;
@@ -1314,10 +1380,15 @@ window.addEventListener('load', () => {
   // so mostra o botao flutuante se houver pagamento confirmado
   checkPixOnLoad();
   checarServidor();
-  // envia os agendamentos que ficaram na fila (PC estava desligado) e pega o horario atual
+  // envia os agendamentos que ficaram na fila (sem internet na hora)
   descarregarSync();
   carregarStatusLoja();
-  setInterval(() => { descarregarSync(); carregarStatusLoja(); }, 60 * 1000);
+  // canal AO VIVO: aberto/fechado do Painel aparece na hora no site
+  ligarCanalCliente();
+  setInterval(() => { descarregarSync(); carregarStatusLoja(); }, 30 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { descarregarSync(); carregarStatusLoja(); }
+  });
   // garante scroll no topo depois de tudo renderizar
   window.scrollTo(0, 0);
   setTimeout(() => window.scrollTo(0, 0), 100);

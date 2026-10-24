@@ -1,19 +1,19 @@
 // ============================================================
 //  PAINEL DO BARBEIRO — Barbearia do Jota
 //
-//  - mostra TODOS os agendamentos que o app "Barbearia do Jota"
-//    manda DIRETO pela internet (canal ntfy) — sem precisar do PC
-//  - o barbeiro liga/desliga (aberto/fechado) e muda os horarios
-//    (abre as / fecha as) para o que quiser — o site obedece
-//  - apito/vibra quando chega agendamento novo
-//  - tudo fica SALVO no aparelho (localStorage), nada se perde
+//  ESTA TELA TEM 3 COISAS, DE CIMA PARA BAIXO:
+//   1. ESTOU ABERTO / ESTOU FECHADO  (entra na hora no app do cliente)
+//   2. Horário de funcionamento      (abre as / fecha as)
+//   3. Agendamentos que chegam sozinhos pela internet
 //
-//  O servidor do PC continua OPCIONAL: serve para o Pix automático
-//  e para listar de jeito centralizado quando estiver ligado.
+//  Os agendamentos chegam DIRETO do aplicativo "Barbearia do Jota"
+//  pelo canal ntfy (internet). O computador NAO precisa estar ligado.
+//  Ele serve apenas como EXTRA: confirmacao automatica do Pix e backup.
+//  Tudo fica SALVO neste aparelho — fechar o app nao perde nada.
 // ============================================================
 
 const CONFIG = {
-  APP_VERSION: '1.0.12',
+  APP_VERSION: '1.0.13',
 
   // Repositório do GitHub onde os APK são publicados.
   GITHUB_USER: 'Surtadoo',
@@ -22,8 +22,7 @@ const CONFIG = {
 
   BARBER_NAME: 'Barbearia do Jota',
 
-  // Endereço(s) do servidor no PC. OPCIONAL — só para o Pix automático
-  // e guar em central. Os agendamentos chegam MESMO SEM PC pelo canal ntfy.
+  // Servidores no PC — OPCIONAIS (so Pix automatico e backup)
   API_BASES: [
     'http://localhost:3001',
     'http://192.168.1.73:3001',
@@ -41,11 +40,14 @@ CONFIG.NTFY_TOPIC = 'bjota-ag-7k2m9xI';
 const LS_SRV = 'painel_servidor_v1';
 const LS_PIN = 'painel_pin_v1';
 const LS_ADIA = 'painel_update_adiado';
+const LS_AG = 'painel_agendamentos_v1';   // agendamentos salvos no aparelho
+const LS_ST = 'painel_status_v1';          // ultimo status aberto/fechado
 
 const $ = (id) => document.getElementById(id);
 const BRL = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');
+const minutosDe = (t) => { const [h, m] = String(t || '09:00').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 
-// ---------- chamada ao servidor ----------
+// ---------- chamada ao servidor do PC (opcional) ----------
 let apiBaseAtual = null;
 
 function servidores() {
@@ -84,9 +86,85 @@ async function chamarApi(rota, opcoes) {
 const pinAtual = () => (localStorage.getItem(LS_PIN) || CONFIG.PIN).trim();
 
 // ============================================================
-//  TUDO SALVO NO APARELHO — nada se perde mesmo sem servidor
+//  1. STATUS: ABERTO OU FECHADO (o mais importante)
 // ============================================================
-const LS_AG = 'painel_agendamentos_v1';
+function statusIniciado() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_ST) || 'null');
+    if (s && s.modo) return s;
+  } catch { /* primeiro uso */ }
+  return { modo: 'auto', aberto: null, abreAs: '09:00', fechaAs: '21:00', ts: 0 };
+}
+let statusLoja = statusIniciado();
+
+// esta aberto AGORA? (manual vale a palavra do barbeiro; auto vale o horario)
+function calcularAbertoAgora(st) {
+  if (!st) return false;
+  if (st.modo === 'manual') return st.aberto !== false;
+  const agora = new Date();
+  if (agora.getDay() === 1) return false; // segunda fechado
+  const mins = agora.getHours() * 60 + agora.getMinutes();
+  return mins >= minutosDe(st.abreAs) && mins <= minutosDe(st.fechaAs);
+}
+
+// pinta a tela com o status atual
+function pintarStatus() {
+  const aberto = calcularAbertoAgora(statusLoja);
+  const g = $('stGrande');
+  if (g) {
+    g.className = 'st-grande ' + (aberto ? 'ok' : 'no');
+    g.textContent = aberto ? '🟢 ABERTO' : '🔴 FECHADO';
+  }
+  const aviso = $('stAviso');
+  if (aviso) {
+    let texto = '';
+    if (statusLoja.modo === 'manual') {
+      texto = 'Você escolheu à mão. Vale até você mudar aqui.';
+    } else {
+      texto = `Horário automático: ${statusLoja.abreAs || '09:00'} às ${statusLoja.fechaAs || '21:00'} (segunda fechado).`;
+    }
+    aviso.textContent = texto;
+  }
+  if ($('mAuto')) $('mAuto').classList.toggle('on', statusLoja.modo !== 'manual');
+  if ($('mAberto')) $('mAberto').classList.toggle('on', statusLoja.modo === 'manual' && statusLoja.aberto !== false);
+  if ($('mFechado')) $('mFechado').classList.toggle('on', statusLoja.modo === 'manual' && statusLoja.aberto === false);
+  if ($('inpAbre') && statusLoja.abreAs) $('inpAbre').value = statusLoja.abreAs;
+  if ($('inpFecha') && statusLoja.fechaAs) $('inpFecha').value = statusLoja.fechaAs;
+}
+
+// marcar o status: salva aqui, avisa os clientes PELA INTERNET e
+// (se estiver ligado) avisa o servidor do PC tambem
+async function mandarStatus(corpo) {
+  statusLoja = {
+    modo: corpo.modo || statusLoja.modo,
+    aberto: corpo.aberto === undefined ? statusLoja.aberto : !!corpo.aberto,
+    abreAs: corpo.abreAs || statusLoja.abreAs || '09:00',
+    fechaAs: corpo.fechaAs || statusLoja.fechaAs || '21:00',
+    ts: Date.now(),
+  };
+  try { localStorage.setItem(LS_ST, JSON.stringify(statusLoja)); } catch { /* ignora */ }
+  pintarStatus();
+  publicarCanal({ t: 's', s: statusLoja });   // <- chega NO HORA no app do cliente
+  try {
+    await chamarApi('/api/painel/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinAtual(), ...corpo }),
+    });
+    toast('✅ Salvo! O site já atualizou.');
+  } catch {
+    toast('✅ Salvo! (PC desligado — mesmo assim funciona)');
+  }
+}
+
+$('mAberto').onclick = () => mandarStatus({ modo: 'manual', aberto: true });
+$('mFechado').onclick = () => mandarStatus({ modo: 'manual', aberto: false });
+$('mAuto').onclick = () => mandarStatus({ modo: 'auto' });
+$('btnSalvarHoras').onclick = () => mandarStatus({ abreAs: $('inpAbre').value, fechaAs: $('inpFecha').value });
+
+// ============================================================
+//  2. AGENDAMENTOS (salvos no aparelho — nada se perde)
+// ============================================================
 function lerLocais() {
   try { return JSON.parse(localStorage.getItem(LS_AG) || '{}'); }
   catch { return {}; }
@@ -95,7 +173,7 @@ function salvarLocais(obj) {
   try { localStorage.setItem(LS_AG, JSON.stringify(obj)); } catch { /* cheio, ignora */ }
 }
 
-// registra um agendamento (novo do canal, lista do servidor ou do salvo)
+// registra/agrupa um agendamento que chegou
 function registrar(b, { avisaNovo = true } = {}) {
   if (!b || !b.id || typeof b.id !== 'string') return 'nao';
   const loc = lerLocais();
@@ -112,7 +190,8 @@ function registrar(b, { avisaNovo = true } = {}) {
   salvarLocais(loc);
   if (novo && avisaNovo) {
     vibrar();
-    toast(`📋 Novo agendamento — ${b.clientName || ''} ${b.time || ''} ${b.dateLabel || ''}`);
+    toast(`📋 Novo agendamento!\n${b.clientName || ''} — ${b.time || ''} ${b.dateLabel || ''}`);
+    pintarLista();
   }
   return novo ? 'novo' : 'atualizou';
 }
@@ -126,14 +205,80 @@ function listaAtual() {
   });
 }
 
+// ---------- pinta a lista com grupos por dia ----------
+function racharDia(b) {
+  const chaveDia = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const hoje = new Date();
+  const amanha = new Date(); amanha.setDate(hoje.getDate() + 1);
+  if (b.dateKey === chaveDia(hoje)) return 'HOJE';
+  if (b.dateKey === chaveDia(amanha)) return 'AMANHÃ';
+  return (b.dateLabel || b.dateKey || '').replace(/,/g, '');
+}
+
+function badgePagamento(b) {
+  if (b.payMethod === 'pix') {
+    if (b.pixStatus === 'pago') return ['💰 Sinal pago', 'pago'];
+    return ['⏳ Sinal pendente', 'espera'];
+  }
+  return ['💵 Pago no local (dinheiro)', 'dinheiro'];
+}
+
+function cardAg(b) {
+  const [rotulo, classe] = badgePagamento(b);
+  const digits = String(b.clientPhone || '').replace(/\D/g, '');
+  const wpp = digits ? `https://wa.me/55${digits.length <= 11 ? '55' + digits : digits}?text=${encodeURIComponent('Olá! Sobre seu agendamento na Barbearia do Jota.')}` : null;
+  const obs = b.note ? `<small>💬 "${esc(String(b.note).slice(0, 80))}"</small>` : '';
+  return `<div class="ag">
+    <div class="ag-hora">${esc(b.time) || '--:--'}</div>
+    <div class="ag-meio">
+      <b>${esc(b.clientName) || '?'}</b>
+      <small>✂️ ${esc(b.serviceName)}</small>
+      <small>📅 ${esc(b.dateLabel) || esc(b.dateKey)}</small>
+      ${obs}
+      ${wpp ? `<a class="wpp-mini" href="${wpp}" target="_blank" rel="noopener">📞 Falar no WhatsApp</a>` : ''}
+    </div>
+    <div class="ag-lado">
+      <span class="badge ${classe}">${rotulo}</span>
+      <span class="preco">${b.price ? BRL(b.price) : ''}</span>
+    </div>
+  </div>`;
+}
+
+function pintarLista() {
+  const box = $('listaAg');
+  if (!box) return;
+  const lista = listaAtual();
+  const hoje = lista.filter((b) => racharDia(b) === 'HOJE');
+  if ($('agContador')) {
+    $('agContador').textContent = lista.length
+      ? `${hoje.length} hoje · ${lista.length} no total`
+      : '';
+  }
+  if (!lista.length) {
+    box.innerHTML = '<div class="vazio">Ninguém agendou ainda.<br>Quando um cliente agendar no aplicativo, <b>aparece aqui e o celular vibra</b>.</div>';
+    return;
+  }
+  let html = '';
+  let ultimoGrupo = null;
+  for (const b of lista) {
+    const g = racharDia(b);
+    if (g !== ultimoGrupo) {
+      html += `<div class="grupo">📅 ${g}</div>`;
+      ultimoGrupo = g;
+    }
+    html += cardAg(b);
+  }
+  box.innerHTML = html;
+}
+
 // ============================================================
-//  CANAL DIRETO ntfy — o app do cliente manda e chega AQUI
+//  CANAL DIRETO ntfy — agendamentos entram SOZINHOS aqui
 // ============================================================
 let sse = null;
 let canalOk = false;
+let anunciouStatus = false;
 
 function publicarCanal(corpo) {
-  // manda para os clientes (status aberto/fechado) — funciona ate sem o PC
   try {
     fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}`, {
       method: 'POST',
@@ -147,144 +292,53 @@ function ligarCanal() {
   try { if (sse) sse.close(); } catch { /* nada */ }
   try {
     sse = new EventSource(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/sse`);
-    sse.onopen = () => { canalOk = true; opStatusOk(); };
+    sse.onopen = () => {
+      canalOk = true;
+      const aviso = $('stAviso');
+      // ao abrir o canal, avisa os clientes "sou eu, o status atual e este"
+      if (!anunciouStatus) {
+        anunciouStatus = true;
+        setTimeout(() => publicarCanal({ t: 's', s: { ...statusLoja, ts: statusLoja.ts || Date.now() } }), 900);
+      }
+      if (aviso && !aviso.textContent) pintarStatus();
+    };
     sse.onerror = () => { canalOk = false; };
     sse.onmessage = (ev) => {
-      let m, p;
+      let m = null, p = null;
       try { m = JSON.parse(ev.data); if (m.event !== 'message' || !m.message) return; } catch { return; }
       try { p = JSON.parse(m.message); } catch { return; }
       if (p.t === 'b' && p.b) registrar(p.b, { avisaNovo: true });        // agendamento novo do app do cliente
       else if (p.t === 'p' && p.b) registrar(p.b, { avisaNovo: false });  // sinal do Pix caiu
-      else if (p.t === 's' && p.s) pintarStatus({ status: p.s, aberto: p.s.aberto });
+      else if (p.t === 's' && p.s && Number(p.s.ts || 0) > Number(statusLoja.ts || 0)) {
+        // outro aparelho com o PAINEL mudou o status — reflete aqui também
+        statusLoja = p.s;
+        try { localStorage.setItem(LS_ST, JSON.stringify(statusLoja)); } catch { /* ignora */ }
+        pintarStatus();
+      }
     };
-  } catch { /* sem internet — tenta de novo depois */ }
-}
-function opStatusOk() {
-  // can statusava conectado no canal, o aviso volta a dizer de onde vem os dados
-  if (!$('stAviso')) return;
-  $('stAviso').textContent = 'Agendamentos chegando pelo canal da internet.';
-}
-
-// ============================================================
-//  LISTA DE AGENDAMENTOS
-// ============================================================
-let verAntes = new Set();
-let primeiraVez = true;
-
-function rotuloPagamento(b) {
-  if (b.payMethod === 'pix') {
-    if (b.pixStatus === 'pago') return ['💰 Sinal PAGO', 'pago'];
-    return ['⏳ Sinal aguardando', 'espera'];
-  }
-  if (b.payMethod === 'dinheiro') return ['💵 Dinheiro no local', 'dinheiro'];
-  return ['·', 'dinheiro'];
-}
-
-function cardAg(b) {
-  const [rotulo, classe] = rotuloPagamento(b);
-  const digits = String(b.clientPhone || '').replace(/\D/g, '');
-  const wpp = digits ? `https://wa.me/55${digits.length <= 11 ? '55' + digits : digits}?text=${encodeURIComponent('Olá! Sobre seu agendamento na Barbearia do Jota.')}` : null;
-  return `<div class="ag" data-id="${b.id}">
-    <div class="ag-ico">💈</div>
-    <div>
-      <b>${b.time || ''} — ${b.serviceName || ''}</b>
-      <small>${b.dateLabel || ''} · ${b.clientName || ''}${b.note ? ' — "' + String(b.note).slice(0, 60) + '"' : ''}</small>
-      ${wpp ? `<a class="wpp-mini" href="${wpp}" target="_blank" rel="noopener">📞 Falar no WhatsApp</a>` : ''}
-    </div>
-    <div class="ag-lado">
-      <span class="${classe}">${rotulo}</span>
-      <small>${b.price ? BRL(b.price) : ''}</small>
-    </div>
-  </div>`;
-}
-
-function pintarLista(agendamentos) {
-  const box = $('listaAg');
-  if (!agendamentos.length) {
-    box.innerHTML = '<div class="vazio">Nenhum agendamento ainda.<br>Quando alguém agendar no site, aparece aqui.</div>';
-    return;
-  }
-  box.innerHTML = agendamentos.map(cardAg).join('');
+  } catch { /* sem internet — tenta de novo na proxima volta */ }
 }
 
 function vibrar() {
   try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch { /* fora */ }
 }
 
+// ============================================================
+//  SERVIDOR DO PC (EXTRA): pega o estado central do Pix pago
+// ============================================================
 async function atualizarPainel() {
-  // o que já está salvo no aparelho sempre aparece na hora
-  pintarLista(listaAtual());
-
-  // o servidor do PC é EXTRA (quando estiver ligado): traz o estado
-  // do Pix pago de jeito centralizado. Se não responder, tudo bem —
-  // os agendamentos chegam pelo canal da internet.
   try {
     const d = await chamarApi('/api/painel?pin=' + encodeURIComponent(pinAtual()));
-    pintarStatus(d);
+    // os agendamentos centrais entram (sem vibrar; o vibrar e so para NOVOS do canal)
     for (const b of (d.agendamentos || [])) registrar(b, { avisaNovo: false });
-    if (!canalOk && $('stAviso')) $('stAviso').textContent = 'Conectado ao servidor do PC.';
-  } catch (e) {
-    if (!canalOk) $('stAviso').textContent = 'Sem servidor do PC — agendamentos chegam pelo canal (ligue o PC só para o Pix automático).';
-  }
-  pintarLista(listaAtual());
-}
-
-// ============================================================
-//  ABERTO / FECHADO + HORARIOS
-// ============================================================
-function pintarStatus(d) {
-  const st = d.status || {};
-  const aberto = !!d.aberto;
-  const g = $('stGrande');
-  g.className = 'st-grande ' + (aberto ? 'ok' : 'no');
-  g.textContent = aberto ? '🟢 ABERTO' : '🔴 FECHADO';
-
-  const sub = [];
-  if (st.modo === 'manual') sub.push(st.aberto === false ? 'fechado a força pelo barbeiro' : 'aberto a força pelo barbeiro');
-  if (st.abreAs && st.fechaAs) sub.push(`janela ${st.abreAs} às ${st.fechaAs}`);
-  $('stAviso').textContent = 'Você escolhe: ' + sub.join(' · ');
-
-  // marca o modo ativo
-  $('mAuto').classList.toggle('on', st.modo !== 'manual');
-  $('mAberto').classList.toggle('on', st.modo === 'manual' && st.aberto !== false);
-  $('mFechado').classList.toggle('on', st.modo === 'manual' && st.aberto === false);
-
-  if (st.abreAs) $('inpAbre').value = st.abreAs;
-  if (st.fechaAs) $('inpFecha').value = st.fechaAs;
-}
-
-async function mandarStatus(corpo) {
-  // o status que os clientes verão
-  const st = {
-    modo: corpo.modo || 'auto',
-    aberto: corpo.aberto == null ? null : !!corpo.aberto,
-    abreAs: corpo.abreAs || $('inpAbre').value || '09:00',
-    fechaAs: corpo.fechaAs || $('inpFecha').value || '21:00',
-    ts: Date.now(),
-  };
-  // 1) canal direto (o site do cliente vê MESMO com o PC desligado)
-  publicarCanal({ t: 's', s: st });
-  pintarStatus({ status: st, aberto: st.modo === 'manual' ? st.aberto : null });
-  // 2) servidor do PC (opcional, para guardar em central)
-  try {
-    await chamarApi('/api/painel/status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: pinAtual(), ...corpo }),
-    });
-    toast('✅ Salvo no servidor!');
   } catch {
-    toast('✅ Salvo no canal (server do PC desligado)');
+    // sem PC: sem problema, o canal da internet cobre a lista
   }
+  pintarLista();
 }
 
-$('mAuto').onclick = () => mandarStatus({ modo: 'auto' });
-$('mAberto').onclick = () => mandarStatus({ modo: 'manual', aberto: true });
-$('mFechado').onclick = () => mandarStatus({ modo: 'manual', aberto: false });
-$('btnSalvarHoras').onclick = () => mandarStatus({ abreAs: $('inpAbre').value, fechaAs: $('inpFecha').value });
-
 // ============================================================
-//  AJUSTES (servidor + PIN)
+//  AJUSTES (PIN + servidor do PC opcional)
 // ============================================================
 $('btnCfg').onclick = () => {
   $('painelVersao').textContent = CONFIG.APP_VERSION;
@@ -303,14 +357,12 @@ $('btnSalvarCfg').onclick = async () => {
   $('cfgAviso').textContent = 'Testando...';
   try {
     const r = await chamarApi('/api/painel?pin=' + encodeURIComponent(pin));
-    $('cfgAviso').textContent = '✅ Conectado! Tudo funcionando.';
-    pintarStatus(r);
+    $('cfgAviso').textContent = '✅ Servidor do PC conectado (opcional, só para o Pix).';
+    for (const b of (r.agendamentos || [])) registrar(b, { avisaNovo: false });
     toast('✅ Salvo!');
-    setTimeout(() => $('modalCfg').classList.add('hidden'), 800);
+    setTimeout(() => $('modalCfg').classList.add('hidden'), 900);
   } catch (e) {
-    $('cfgAviso').textContent = e.status === 401
-      ? '❌ Chegou no servidor, mas o PIN está errado.'
-      : '❌ O servidor não responde. Ligue o PC (iniciar-tudo.bat) e confira o endereço.';
+    $('cfgAviso').textContent = '⚠️ (Tudo bem—os agendamentos chegam pela internet mesmo assim.) ' + (e.status === 401 ? 'PIN errado.' : 'PC não responde.');
   }
 };
 
@@ -323,7 +375,7 @@ function toast(msg) {
   if (!t) {
     t = document.createElement('div');
     t.id = 'toastPainel';
-    t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gold);color:#111;font-weight:800;padding:12px 18px;border-radius:12px;z-index:99;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:90vw;text-align:center';
+    t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gold);color:#111;font-weight:800;padding:12px 18px;border-radius:12px;z-index:99;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:90vw;text-align:center;white-space:pre-line';
     document.body.appendChild(t);
   }
   t.textContent = msg;
@@ -332,14 +384,12 @@ function toast(msg) {
   timerToast = setTimeout(() => { t.style.display = 'none'; }, 4000);
 }
 
+// correcao de texto com < > "
+const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 // ============================================================
-//  ATUALIZACAO DO APLICATIVO (mesma mecanica do app do site,
-//  mas baixa o APK cujo nome comeca por "Painel")
+//  ATUALIZACAO DO APLICATIVO (baixa o APK "Painel-vX.X.X.apk")
 // ============================================================
-function repoSalvo() {
-  if (CONFIG.GITHUB_USER && CONFIG.GITHUB_REPO) return { user: CONFIG.GITHUB_USER, repo: CONFIG.GITHUB_REPO };
-  return null;
-}
 function versaoParaNumero(v) {
   return String(v || '0').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
 }
@@ -353,10 +403,8 @@ function versaoEhMaior(nova, atual) {
   return false;
 }
 async function checarAtualizacao({ silencioso = true } = {}) {
-  const r = repoSalvo();
-  if (!r) return null;
   try {
-    const resp = await fetch(`https://api.github.com/repos/${r.user}/${r.repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
+    const resp = await fetch(`https://api.github.com/repos/${CONFIG.GITHUB_USER}/${CONFIG.GITHUB_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
     if (!resp.ok) throw new Error(`GitHub ${resp.status}`);
     const rel = await resp.json();
     if (!rel || !rel.tag_name) return null;
@@ -428,20 +476,24 @@ $('btnVerificarUpdate').onclick = async () => {
 // ============================================================
 window.addEventListener('load', () => {
   window.scrollTo(0, 0);
-  pintarLista(listaAtual());      // o que ja esta salvo aparece na hora
-  atualizarPainel();
-  ligarCanal();                   // canal direto: agendamentos CHEGAM sozinhos
-  // confere o servidor do PC de minuto em minuto (opcional, para o Pix)
+  pintarStatus();       // status salvo aparece na hora
+  pintarLista();        // agendamentos salvos aparecem na hora
+  atualizarPainel();    // (extra: estado do Pix vindo do PC)
+  ligarCanal();         // canal da internet: agendamentos ENTAM sozinhos
   setInterval(atualizarPainel, 60000);
-  // ao voltar para o app, atualiza na hora
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') atualizarPainel();
+    if (document.visibilityState === 'visible') {
+      pintarLista();
+      atualizarPainel();
+      // reavisa os clientes do status atual (cobre desconexoes longas)
+      publicarCanal({ t: 's', s: { ...statusLoja, ts: statusLoja.ts || Date.now() } });
+    }
   });
+  document.title = 'Painel — ' + CONFIG.BARBER_NAME;
   // procura versao nova so dentro do APK
   const ehApk = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   if (ehApk) {
     setTimeout(() => checarAtualizacao({ silencioso: true }), 1000);
     setInterval(() => checarAtualizacao({ silencioso: true }), 2 * 60 * 1000);
   }
-  document.title = 'Painel — ' + CONFIG.BARBER_NAME;
 });
