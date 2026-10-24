@@ -1,51 +1,61 @@
 # 📋 PAINEL DO BARBEIRO — como funciona
 
-O "Painel" é um segundo aplicativo (apartamento do app do cliente).
+O "Painel" é um segundo aplicativo (separado do app do cliente) que só **você** usa.
 
 ## O que ele faz
 
 | Função | Como usar |
 |---|---|
-| **Ver todos os agendamentos** | Abre o Painel: cada agendamento do site aparece como cartão (nome, telefone, serviço, dia, hora, pagamento). Clique em "📞 Falar no WhatsApp" para ligar o WhatsApp do cliente. |
-| **Novo agendamento** | A lista se atualiza sozinha a cada 5 segundos. Quando chega um agendamento novo, o celular **vibra** e mostra aviso. |
-| **Abrir/Fechar quando quiser** | Botões no topo: ⏱️ **Horário automático** (obedece a janela configurada), 🟢 **Forçar aberto**, 🔴 **Forçar fechado**. O site do cliente obedece na hora. |
-| **Mudar os horários** | Campos "Abre às" e "Fecha às" + botão 💾 **Salvar horários**. Ex.: abrir às 08:00 e fechar às 22:00. O site só deixa agendar dentro dessa janela. |
+| **Ver todos os agendamentos** | Abre o Painel: cada agendamento do app "Barbearia do Jota" aparece como cartão (nome, telefone, serviço, dia, hora, pagamento). Clique em "📞 Falar no WhatsApp" para ligar o WhatsApp do cliente. |
+| **Novo agendamento** | CHEGA DIRETO DO APLICATIVO DO CLIENTE pela internet — nada de ligar o computador. Quando chega, o celular **vibra** e mostra aviso. |
+| **Abrir/Fechar quando quiser** | Botões no topo: ⏱️ **Horário automático**, 🟢 **Forçar aberto**, 🔴 **Forçar fechado**. O app do cliente obedece na hora. |
+| **Mudar os horários** | Campos "Abre às" e "Fecha às" + botão 💾 **Salvar horários**. Ex.: abrir às 08:00 e fechar às 22:00. O cliente só consegue agendar dentro dessa janela. |
 
-## O que precisa estar ligado
+## Como chegam os agendamentos (sem precisar do PC)
 
-O agendamento do site **chega no Painel pelo computador** (mesmo servidor que confere o Pix):
+Os dois apps conversam **direto pela internet** usando o serviço gratuito **ntfy.sh**:
 
-1. No PC da barbearia, ligue **`iniciar-tudo.bat`** (ele sobe o servidor Pix + o site) e **deixe a janela aberta**.
-2. No celular com o Painel, o nº precisa estar **na mesma rede Wi-Fi do PC** (ou o servidor publicado na internet).
+```
+celular do cliente (app Barbearia do Jota)
+        │  agendamento enviado pela internet
+        ▼
+celular do barbeiro (app Painel)  — vibra e salva na hora
+```
 
-> Se o PC estiver desligado, o site **não perde** o agendamento: ele fica numa fila no celular do cliente e envia sozinho assim que o PC ligar.
+- O agendamento fica **SALVO dentro do Painel** (no próprio aparelho): pode fechar o app, reiniciar o celular, nada se perde.
+- Se o cliente estiver sem internet no momento, o agendamento fica numa fila no celular dele e é enviado sozinho quando a internet voltar.
+- **O computador NÃO precisa estar ligado** para agendar e receber.
+- O canal guarda as mensagens por **12 horas** — se o Painel ficar totalmente sem internet mais que isso, os agendamentos daquele período são reenviados quando o cliente abrir o app de novo.
+
+## O PC continua OPCIONAL (só para 2 coisas)
+
+1. **Confirmação automática do Pix** — quando o sinal cai, o servidor do PC avisa o Painel "pago" na hora. Sem o PC, o pagamento aparece normalmente, só sem o aviso automático.
+2. **Cópia de segurança central** no arquivo `backend\painel.json`.
+
+Para essas duas coisas, ligue `iniciar-tudo.bat` no PC e deixe a janela aberta.
 
 ## PIN do Painel
 
-O Painel lê os dados com um PIN para os dados dos clientes não ficarem abertos na rede.
+O Painel lê os dados do servidor com um PIN para os dados dos clientes não ficarem abertos na rede.
 
-- PIN padrão: **1234**
-- Para trocar: no Painel → ⚙️ Ajustes → campo "PIN do painel". E também no PC, no arquivo `backend\.env`, crie/edite a linha:
+- PIN padrão: **1234** — troque no ⚙️ Ajustes do Painel e também no arquivo `backend\.env`:
   ```
-  PIN_PAINEL=suatrocinco
+  PIN_PAINEL=suapin
   ```
   e reinicie o `iniciar-tudo.bat`.
-- **Os dois PINs têm que ser iguais** (o do Painel e o do servidor).
 
-## Endereço do servidor no Painel
+## Ajustes (⚙️) do Painel
 
-⚙️ Ajustes → "Endereço do servidor" — campo com o IP do PC (ex. `http://192.168.1.73:3001`).
-Se mudar o IP do PC, atualize aqui e, no Painel ligado ao PIN errado ele avisa.
+Mostra a versão, o PIN, servidores do PC (opcional) e o botão de atualização.
 
 ## Atualização do Painel
 
-Igual ao app do site: quando sair release nova no GitHub (com um APK chamado `Painel-vX.X.X.apk` anexado), o popup
-🔁 Nova versão do Painel aparece — botão **Atualizar agora** instala.
+Igual ao app do cliente: quando sair release nova no GitHub (com um APK chamado `Painel-vX.X.X.apk` anexado), aparece o popup
+🔁 *Nova versão do Painel* — botão **Atualizar agora** instala sozinho. "Depois" adia 5 minutos; `[FORCAR]` nas notas da release força.
 
-## No momento, dentro dos APK
+## Publicar versão nova (os dois apps de uma vez)
 
-- **Barbearia-do-Jota.apk** (cliente): sem o botão "🗑️ Limpar dados de teste"; envia agendamentos ao Painel.
-- **Painel.apk** (barbeiro): listagem completa + abrir/fechar + horários.
+Clique 2x em **`publicar-apk.bat`**: ele sobe a versão, gera o APK do cliente **e do Painel**, envia ao GitHub e publica a release com **os dois APKs** anexados.
 
 ## Estrutura dos arquivos
 
@@ -53,7 +63,10 @@ Igual ao app do site: quando sair release nova no GitHub (com um APK chamado `Pa
 site+apk+github/
   apk-painel/            <- fonte do Painel (index.html, painel.js)
     android/             <- projeto Android próprio (app com.barbeariadojota.painel)
-  backend/painel.json    <- TODOS os agendamentos + status aberto/fechado
-  site-barbearia/        <- site normal (cliente)
+  site-barbearia/        <- fonte do site / app do cliente
+  backend/server.js      <- servidor do PC (opcional: Pix + backup)
+  backend/painel.json    <- backup central dos agendamentos
+  atualizar-painel.ps1   <- sobe versão e compila o Painel sozinho
+  publicar-apk.bat       <- publica os DOIS apps no GitHub
   APK/                   <- APKs compilados prontos para instalar
 ```

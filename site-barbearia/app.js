@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.11',
+  APP_VERSION: '1.0.12',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -28,6 +28,11 @@ const CONFIG = {
   // o cliente paga nesse link e o servidor so confere se o dinheiro caiu.
   PIX_LINK: 'https://link.infinitepay.io/yago-assumpcao-y9d/VC1B-ZROqZmZFD4-10,00',
   CLOSED_WEEKDAY: 1,
+
+  // canal DIRETO para chegar o agendamento no Painel do barbeiro
+  // (ntfy, gratis). TEM que ser o MESMO nome no apk-painel/painel.js.
+  NTFY_URL: 'https://ntfy.sh',
+  NTFY_TOPIC: 'bjota-ag-7k2m9xI',
   ABOUT: 'Na Barbearia do Jota, cuidar do visual é mais do que fazer um corte — é oferecer uma experiência de qualidade, com atendimento de respeito, praticidade e aquele cuidado que você merece.\n\nTrabalhamos com cortes modernos, barba na navalha e serviços pensados para deixar você sempre no estilo. Nosso objetivo é proporcionar um atendimento rápido, profissional e sem complicação.\n\nAqui você escolhe o serviço, o dia e o horário que deseja. Em poucos minutos, seu atendimento já fica agendado e você pode chegar à barbearia sabendo que sua vaga está garantida.\n\nSeu horário, do seu jeito\nChega de perder tempo esperando. Com nosso sistema de agendamento, você escolhe o melhor horário e já deixa tudo organizado antes de sair de casa.\n\nPagamento em dinheiro: a confirmação é feita diretamente pelo WhatsApp.\nPagamento via Pix: você paga um sinal de R$ 10,00 para garantir sua vaga. O valor do sinal é descontado do preço total do serviço.\n\nVaga garantida: após a confirmação do pagamento, seu horário fica reservado para você.\n\nOnde estamos\nBarbearia do Jota\nRua Javata, 1506 - Anchieta\n\nAtendimento: Terça a domingo, das 09h às 21h\nSegunda-feira: fechado\n\nVenha conhecer a Barbearia do Jota e tenha um atendimento de qualidade, com horário marcado e sem complicação.\n\nCorte certo, na hora certa.',
 };
 
@@ -701,7 +706,9 @@ async function chamarApi(rota, opcoes) {
 }
 
 // ---------- envia o agendamento para o PAINEL do barbeiro ----------
-// Se o computador estiver desligado, fica na fila e tenta de novo sozinho.
+// 1) pelo canal da INTERNET (ntfy) — chega no Painel direto, sem PC
+// 2) pelo servidor do PC (opcional) — se estiver ligado, guarda em central
+// Se os dois falharem, fica na fila e tenta de novo sozinho.
 const LS_SYNC = 'barbearia_sync_v1';
 function filaSync(b) {
   if (!b || !b.id) return;
@@ -711,37 +718,78 @@ function filaSync(b) {
     localStorage.setItem(LS_SYNC, JSON.stringify(fila));
   } catch { /* ignora */ }
 }
+
+// entrega um agendamento no canal da internet + servidor do PC
+async function mandarAgendamento(b) {
+  let entregue = false;
+  try {
+    const r = await fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ t: 'b', b }),
+    });
+    entregue = r.ok;
+  } catch { /* sem internet */ }
+  try { await chamarApi('/api/agendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); } catch { /* PC desligado, tudo bem */ }
+  return entregue;
+}
+
 async function descarregarSync() {
   let fila = {};
   try { fila = JSON.parse(localStorage.getItem(LS_SYNC) || '{}'); } catch { return; }
-  const ids = Object.keys(fila);
-  if (!ids.length) return;
-  const restantes = { ...fila };
-  for (const id of ids) {
-    try {
-      await chamarApi('/api/agendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fila[id]),
-      });
-      delete restantes[id];
-    } catch { break; } // servidor fora do ar — tenta de novo mais tarde
+  const agora = Date.now();
+  const entregues = [];
+  for (const id of Object.keys(fila)) {
+    // apaga da fila o que esta a mais de 3 dias tentando (o canal guarda 12h)
+    const quando = Date.parse(fila[id] && fila[id].createdAt || 0) || agora;
+    if (agora - quando > 3 * 24 * 60 * 60 * 1000) { entregues.push(id); continue; }
+    try { if (await mandarAgendamento(fila[id])) entregues.push(id); }
+    catch { /* não entregou agora — tenta na próxima vez */ }
   }
-  try { localStorage.setItem(LS_SYNC, JSON.stringify(restantes)); } catch { /* ignora */ }
+  if (!entregues.length) return;
+  // re-le para nao apagar agendamento novo que entrou na fila durante o envio
+  try {
+    const atual = JSON.parse(localStorage.getItem(LS_SYNC) || '{}');
+    for (const id of entregues) delete atual[id];
+    localStorage.setItem(LS_SYNC, JSON.stringify(atual));
+  } catch { /* ignora */ }
 }
 
 // ---------- status aberto/fechado vindo do painel do barbeiro ----------
-let statusLoja = { modo: 'auto', aberto: null, abreAs: null, fechaAs: null, ok: false };
+// O Painel publica o status no canal (ntfy); aqui a gnt pega a ultima
+// mensagem da ultima 12 horas e mantem em casa para abrir mais rapido.
+let statusLoja = ((tem) => {
+  try {
+    const s = JSON.parse(localStorage.getItem('barbearia_status_loja_v1') || 'null');
+    // so vale se for recente (o canal guarda 12 horas)
+    if (s && s.ts && Date.now() - s.ts < 12 * 60 * 60 * 1000) return { ...s, ok: true };
+  } catch { /* tudo bem */ }
+  return { modo: 'auto', aberto: null, abreAs: null, fechaAs: null, ok: false };
+})();
 async function carregarStatusLoja() {
   try {
-    const s = await chamarApi('/api/status');
-    if (s && s.abreAs) {
-      statusLoja = { ...s, ok: true };
-      renderToday();
-      renderTimes();
-      renderCalendar();
+    const resp = await fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/json?poll=1&since=12h`);
+    const texto = await resp.text();
+    let melhor = null;
+    for (const linha of texto.split('\n')) {
+      try {
+        const o = JSON.parse(linha);
+        if (!o || o.event !== 'message' || !o.message) continue;
+        const s = JSON.parse(o.message);
+        if (s && s.t === 's' && s.s && (!melhor || (Number(s.s.ts) || 0) > melhor.ts)) melhor = s.s;
+      } catch { /* linha suja, pula */ }
     }
-  } catch { /* sem servidor: usa o horario padrao do site */ }
+    if (melhor && (Number(melhor.ts) || 0) > 0) {
+      const velho = statusLoja.ts || 0;
+      if ((melhor.ts || 0) > velho) {
+        statusLoja = { ...melhor, ok: true };
+        try { localStorage.setItem('barbearia_status_loja_v1', JSON.stringify(statusLoja)); } catch { /* ignora */ }
+        renderToday();
+        renderTimes();
+        renderCalendar();
+      }
+    }
+  } catch { /* sem internet — usa o que ja tenho em casa */ }
 }
 const minutosDe = (t) => { const [h, m] = String(t || '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 const abreAsLoja = () => statusLoja.ok ? (statusLoja.abreAs || '09:00') : '09:00';

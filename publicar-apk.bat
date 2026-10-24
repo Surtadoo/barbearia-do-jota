@@ -101,6 +101,18 @@ if not exist "%RAIZ%\APK" mkdir "%RAIZ%\APK"
 copy /Y "%SITE%\android\app\build\outputs\apk\debug\app-debug.apk" "%RAIZ%\APK\Barbearia-do-Jota-v%NOVA%.apk" >nul
 echo       pronto: APK\Barbearia-do-Jota-v%NOVA%.apk
 
+REM ---------- 4b. atualiza e gera tambem o APK do PAINEL ----------
+echo.
+echo [2b/4] Atualizando o APK do Painel...
+if exist "%RAIZ%\apk-painel\android" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%RAIZ%\atualizar-painel.ps1" %NOVA%
+  if errorlevel 1 (
+    echo [AVISO] O APK do Painel nao saiu. O app do cliente sera publicado do mesmo jeito.
+  )
+) else (
+  echo       pasta apk-painel nao existe, pulando o Painel.
+)
+
 REM ---------- 5. envia para o GitHub ----------
 echo.
 echo [3/4] Mandando para o GitHub...
@@ -157,6 +169,13 @@ if errorlevel 1 (
   echo.
   pause
   exit /b 1
+)
+
+REM ---------- 6b. anexa o APK do Painel na mesma release ----------
+if exist "%RAIZ%\APK\Painel-v%NOVA%.apk" (
+  echo.
+  echo       Anexando o Painel-v%NOVA%.apk na mesma release...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%RAIZ%\publicar-release.ps1" -Versao "%NOVA%" -Apk "%RAIZ%\APK\Painel-v%NOVA%.apk" -Mensagem "Painel v%NOVA%"
 )
 
 echo.

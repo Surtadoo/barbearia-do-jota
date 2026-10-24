@@ -1,37 +1,42 @@
 // ============================================================
 //  PAINEL DO BARBEIRO — Barbearia do Jota
 //
-//  - mostra TODOS os agendamentos que chegam do site
+//  - mostra TODOS os agendamentos que o app "Barbearia do Jota"
+//    manda DIRETO pela internet (canal ntfy) — sem precisar do PC
 //  - o barbeiro liga/desliga (aberto/fechado) e muda os horarios
 //    (abre as / fecha as) para o que quiser — o site obedece
 //  - apito/vibra quando chega agendamento novo
+//  - tudo fica SALVO no aparelho (localStorage), nada se perde
 //
-//  Funciona junto com o servidor do computador (backend/server.js).
-//  O celular precisa estar na mesma rede do PC (ou o servidor
-//  publicado na internet).
+//  O servidor do PC continua OPCIONAL: serve para o Pix automático
+//  e para listar de jeito centralizado quando estiver ligado.
 // ============================================================
 
 const CONFIG = {
-  APP_VERSION: '1.0.11',
+  APP_VERSION: '1.0.12',
 
-  // mesmo repositorio do app da barbearia; os APK do painel
-  // sao anexados nas releases com nome comecando por "Painel"
+  // Repositório do GitHub onde os APK são publicados.
   GITHUB_USER: 'Surtadoo',
   GITHUB_REPO: 'barbearia-do-jota',
   ASSET_PREFIX: 'Painel',
 
   BARBER_NAME: 'Barbearia do Jota',
 
-  // endereco(s) do servidor no PC. O mesmo usado pelo site.
+  // Endereço(s) do servidor no PC. OPCIONAL — só para o Pix automático
+  // e guar em central. Os agendamentos chegam MESMO SEM PC pelo canal ntfy.
   API_BASES: [
     'http://localhost:3001',
     'http://192.168.1.73:3001',
   ],
 
-  // PIN padrao (voce pode trocar aqui e no Ajustes do Painel;
-  // para valer de verdade troque também no backend/.env PIN_PAINEL)
+  // PIN padrão (troque também no backend/.env PIN_PAINEL)
   PIN: '1234',
 };
+
+// Canal DIRETO entre o app do cliente e este Painel (ntfy — grátis).
+// TEM que ser o MESMO nome nos dois apps. Trocar aqui = trocar lá também.
+CONFIG.NTFY_URL = 'https://ntfy.sh';
+CONFIG.NTFY_TOPIC = 'bjota-ag-7k2m9xI';
 
 const LS_SRV = 'painel_servidor_v1';
 const LS_PIN = 'painel_pin_v1';
@@ -77,6 +82,88 @@ async function chamarApi(rota, opcoes) {
 }
 
 const pinAtual = () => (localStorage.getItem(LS_PIN) || CONFIG.PIN).trim();
+
+// ============================================================
+//  TUDO SALVO NO APARELHO — nada se perde mesmo sem servidor
+// ============================================================
+const LS_AG = 'painel_agendamentos_v1';
+function lerLocais() {
+  try { return JSON.parse(localStorage.getItem(LS_AG) || '{}'); }
+  catch { return {}; }
+}
+function salvarLocais(obj) {
+  try { localStorage.setItem(LS_AG, JSON.stringify(obj)); } catch { /* cheio, ignora */ }
+}
+
+// registra um agendamento (novo do canal, lista do servidor ou do salvo)
+function registrar(b, { avisaNovo = true } = {}) {
+  if (!b || !b.id || typeof b.id !== 'string') return 'nao';
+  const loc = lerLocais();
+  const atual = loc[b.id];
+  let novo = false;
+  if (!atual) {
+    novo = true;
+    loc[b.id] = b;
+  } else if (b.pixStatus === 'pago' && atual.pixStatus !== 'pago') {
+    loc[b.id] = { ...atual, ...b, pixStatus: 'pago', status: b.status || atual.status };
+  } else if (String(b.createdAt || '') >= String(atual.createdAt || '')) {
+    loc[b.id] = { ...atual, ...b };
+  }
+  salvarLocais(loc);
+  if (novo && avisaNovo) {
+    vibrar();
+    toast(`📋 Novo agendamento — ${b.clientName || ''} ${b.time || ''} ${b.dateLabel || ''}`);
+  }
+  return novo ? 'novo' : 'atualizou';
+}
+
+function listaAtual() {
+  return Object.values(lerLocais()).sort((a, b) => {
+    const da = `${a.dateKey || ''} ${a.time || ''}`;
+    const db = `${b.dateKey || ''} ${b.time || ''}`;
+    if (da === db) return (b.createdAt || '').localeCompare(a.createdAt || '');
+    return da > db ? 1 : -1;
+  });
+}
+
+// ============================================================
+//  CANAL DIRETO ntfy — o app do cliente manda e chega AQUI
+// ============================================================
+let sse = null;
+let canalOk = false;
+
+function publicarCanal(corpo) {
+  // manda para os clientes (status aberto/fechado) — funciona ate sem o PC
+  try {
+    fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(corpo),
+    }).catch(() => {});
+  } catch { /* ignora */ }
+}
+
+function ligarCanal() {
+  try { if (sse) sse.close(); } catch { /* nada */ }
+  try {
+    sse = new EventSource(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/sse`);
+    sse.onopen = () => { canalOk = true; opStatusOk(); };
+    sse.onerror = () => { canalOk = false; };
+    sse.onmessage = (ev) => {
+      let m, p;
+      try { m = JSON.parse(ev.data); if (m.event !== 'message' || !m.message) return; } catch { return; }
+      try { p = JSON.parse(m.message); } catch { return; }
+      if (p.t === 'b' && p.b) registrar(p.b, { avisaNovo: true });        // agendamento novo do app do cliente
+      else if (p.t === 'p' && p.b) registrar(p.b, { avisaNovo: false });  // sinal do Pix caiu
+      else if (p.t === 's' && p.s) pintarStatus({ status: p.s, aberto: p.s.aberto });
+    };
+  } catch { /* sem internet — tenta de novo depois */ }
+}
+function opStatusOk() {
+  // can statusava conectado no canal, o aviso volta a dizer de onde vem os dados
+  if (!$('stAviso')) return;
+  $('stAviso').textContent = 'Agendamentos chegando pelo canal da internet.';
+}
 
 // ============================================================
 //  LISTA DE AGENDAMENTOS
@@ -125,31 +212,21 @@ function vibrar() {
 }
 
 async function atualizarPainel() {
+  // o que já está salvo no aparelho sempre aparece na hora
+  pintarLista(listaAtual());
+
+  // o servidor do PC é EXTRA (quando estiver ligado): traz o estado
+  // do Pix pago de jeito centralizado. Se não responder, tudo bem —
+  // os agendamentos chegam pelo canal da internet.
   try {
     const d = await chamarApi('/api/painel?pin=' + encodeURIComponent(pinAtual()));
     pintarStatus(d);
-    pintarLista(d.agendamentos || []);
-
-    // chegou agendamento novo? avisa com vibracao
-    const agora = new Set((d.agendamentos || []).map((b) => b.id));
-    if (!primeiraVez) {
-      const novos = (d.agendamentos || []).filter((b) => !verAntes.has(b.id));
-      if (novos.length) {
-        vibrar();
-        toast(`📋 ${novos.length === 1 ? 'Novo agendamento' : novos.length + ' agendamentos novos'} — ${novos[0].clientName || ''} ${novos[0].time || ''}`);
-        // marca os novos cards
-        for (const n of novos) {
-          const el = document.querySelector(`.ag[data-id="${n.id}"]`);
-          if (el) { el.classList.add('novo'); setTimeout(() => el.classList.remove('novo'), 15000); }
-        }
-      }
-    }
-    verAntes = agora;
-    primeiraVez = false;
+    for (const b of (d.agendamentos || [])) registrar(b, { avisaNovo: false });
+    if (!canalOk && $('stAviso')) $('stAviso').textContent = 'Conectado ao servidor do PC.';
   } catch (e) {
-    $('listaAg').innerHTML = '<div class="vazio">⚠️ Servidor fora do ar.<br>Ligue o computador (iniciar-tudo.bat) ou confira o endereço em ⚙️ Ajustes.<br><small>' + (e && e.message ? e.message : '') + '</small></div>';
-    $('stAviso').textContent = 'Sem conexão com o servidor.';
+    if (!canalOk) $('stAviso').textContent = 'Sem servidor do PC — agendamentos chegam pelo canal (ligue o PC só para o Pix automático).';
   }
+  pintarLista(listaAtual());
 }
 
 // ============================================================
@@ -177,18 +254,27 @@ function pintarStatus(d) {
 }
 
 async function mandarStatus(corpo) {
+  // o status que os clientes verão
+  const st = {
+    modo: corpo.modo || 'auto',
+    aberto: corpo.aberto == null ? null : !!corpo.aberto,
+    abreAs: corpo.abreAs || $('inpAbre').value || '09:00',
+    fechaAs: corpo.fechaAs || $('inpFecha').value || '21:00',
+    ts: Date.now(),
+  };
+  // 1) canal direto (o site do cliente vê MESMO com o PC desligado)
+  publicarCanal({ t: 's', s: st });
+  pintarStatus({ status: st, aberto: st.modo === 'manual' ? st.aberto : null });
+  // 2) servidor do PC (opcional, para guardar em central)
   try {
-    const r = await chamarApi('/api/painel/status', {
+    await chamarApi('/api/painel/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: pinAtual(), ...corpo }),
     });
-    if (r && r.error === undefined) {
-      pintarStatus({ status: r.status, aberto: r.aberto });
-      toast('✅ Atualizado no site!');
-    }
-  } catch (e) {
-    toast('❌ Não consegui falar com o servidor.');
+    toast('✅ Salvo no servidor!');
+  } catch {
+    toast('✅ Salvo no canal (server do PC desligado)');
   }
 }
 
@@ -342,9 +428,11 @@ $('btnVerificarUpdate').onclick = async () => {
 // ============================================================
 window.addEventListener('load', () => {
   window.scrollTo(0, 0);
+  pintarLista(listaAtual());      // o que ja esta salvo aparece na hora
   atualizarPainel();
-  // a lista se atualiza sozinha a cada 5 segundos
-  setInterval(atualizarPainel, 5000);
+  ligarCanal();                   // canal direto: agendamentos CHEGAM sozinhos
+  // confere o servidor do PC de minuto em minuto (opcional, para o Pix)
+  setInterval(atualizarPainel, 60000);
   // ao voltar para o app, atualiza na hora
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') atualizarPainel();

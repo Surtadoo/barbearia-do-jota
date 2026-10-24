@@ -48,8 +48,22 @@ const DB_FILE = path.join(__dirname, 'pagamentos.json');
 //  - manda o aberto/fechado e os horarios que o barbeiro escolher
 //  - o Painel (APK do barbeiro) ler com um PIN para nao expor os
 //    clientes para qualquer um.
-const PIN_PAINEL = String(process.env.PIN_PAINEL || '1234').trim(); // <- trocapelo .env ou aqui
+const PIN_PAINEL = String(process.env.PIN_PAINEL || '1234').trim(); // <- troque pelo .env ou aqui
 const PAINEL_FILE = path.join(__dirname, 'painel.json');
+const NTFY_URL = String(process.env.NTFY_URL || 'https://ntfy.sh').trim();
+const NTFY_TOPIC = String(process.env.NTFY_TOPIC || 'bjota-ag-7k2m9xI').trim();
+
+// avisa o Painel pelo canal da internet (funciona mesmo se o servidor
+// esta longe do celular do barbeiro)
+function publicarCanal(corpo) {
+  try {
+    fetch(`${NTFY_URL}/${NTFY_TOPIC}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(corpo),
+    }).catch(() => {});
+  } catch { /* ignora */ }
+}
 // ============================================================
 
 const STATUS_PADRAO = { modo: 'auto', aberto: null, abreAs: '09:00', fechaAs: '21:00', atualizadoEm: null };
@@ -312,13 +326,14 @@ app.get('/api/conferir/:bookingId', async (req, res) => {
 
     if (caiu && !registro.jaPagoAntes) {
       setPagamento(bookingId, { pago: true, confirmadoEm: new Date().toISOString() });
-      // marca pago no painel do barbeiro tambem
+      // marca pago no painel do barbeiro tambem (e no canal direto)
       const pPainel = loadPainel();
       if (pPainel.agendamentos[bookingId]) {
         pPainel.agendamentos[bookingId].pixStatus = 'pago';
         pPainel.agendamentos[bookingId].status = 'confirmado';
         savePainel(pPainel);
       }
+      publicarCanal({ t: 'p', b: { id: bookingId, pixStatus: 'pago', status: 'confirmado' } });
       console.log(`[pix] PAGO: ${bookingId}`);
       return res.json({ pago: true, valor: registro.valor });
     }
