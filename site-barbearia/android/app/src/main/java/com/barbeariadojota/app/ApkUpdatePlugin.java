@@ -52,7 +52,7 @@ public class ApkUpdatePlugin extends Plugin {
             Uri destino = Uri.parse("content://downloads/public_downloads");
             DownloadManager.Request req = new DownloadManager.Request(Uri.parse(pendingUrl))
                     .setTitle("Barbearia do Jota")
-                    .setDescription("Baizando atualizacao...")
+                    .setDescription("Baixando a atualizacao")
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     .setMimeType("application/vnd.android.package-archive")
                     .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, nomeArquivo)
@@ -62,7 +62,7 @@ public class ApkUpdatePlugin extends Plugin {
 
             // avisa o usuario
             android.widget.Toast.makeText(getContext(),
-                    "Baizando a atualizacao...", android.widget.Toast.LENGTH_LONG).show();
+                    "Baixando a atualizacao...", android.widget.Toast.LENGTH_LONG).show();
 
             call.resolve();
         } catch (Exception e) {

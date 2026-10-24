@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.16',
+  APP_VERSION: '1.0.17',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -649,8 +649,12 @@ function baixarEInstalar(url) {
 
   const nativo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ApkUpdate;
   if (!nativo) {
-    // no navegador: abre a pagina de download mesmo assim
-    window.open(url, '_blank', 'noopener');
+    // sem o plugin (navegador): baixa o APK direto, sem ir para pagina do GitHub
+    const a = document.createElement('a');
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     return;
   }
 

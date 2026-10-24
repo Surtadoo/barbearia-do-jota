@@ -13,7 +13,7 @@
 // ============================================================
 
 const CONFIG = {
-  APP_VERSION: '1.0.15',
+  APP_VERSION: '1.0.17',
 
   // Repositório do GitHub onde os APK são publicados.
   GITHUB_USER: 'Surtadoo',
@@ -488,7 +488,14 @@ function baixarEInstalar(url) {
   if (!url) return;
   localStorage.removeItem(LS_ADIA);
   const nativo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.ApkUpdate;
-  if (!nativo) { window.open(url, '_blank', 'noopener'); return; }
+  if (!nativo) {
+    const a = document.createElement('a');
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
   $('updNotas').textContent = 'Baixando a atualização. Ela será instalada em seguida...';
   $('btnAtualizar').disabled = true;
   $('btnAtualizar').textContent = '⏳ Baixando...';
