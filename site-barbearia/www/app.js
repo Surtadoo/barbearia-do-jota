@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.10',
+  APP_VERSION: '1.0.11',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -264,12 +264,23 @@ async function renderTimes() {
   const tkey = toKey(now.getFullYear(), now.getMonth(), now.getDate());
   const isToday = dayKey === tkey;
   const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : 99999;
+  // o barbeiro forcou o fechamento pelo painel
+  if (statusLoja.modo === 'manual' && statusLoja.aberto === false) {
+    box.innerHTML = '<span class="tiny">🔴 A barbearia está fechada agora. Volte em outro horário!</span>';
+    const hint0 = $('busyHint');
+    if (hint0) hint0.textContent = '';
+    return;
+  }
+  const abreM = minutosDe(abreAsLoja());
+  const fechaM = minutosDe(fechaAsLoja());
   const list = await loadBookings();
   box.innerHTML = TIME_SLOTS.map((t) => {
     const [h, m] = t.split(':').map(Number);
     const slotMinutes = h * 60 + m;
     const busy = list.some((b) => b.dateKey === dayKey && b.time === t && bookingHoldsSlot(b));
     const expired = isToday && slotMinutes < currentMinutes;
+    // fora do horario definido pelo barbeiro no painel
+    if (slotMinutes < abreM || slotMinutes > fechaM) return '';
     if (expired) return '';
     return `<button class="slot ${t === time ? 'selected' : ''} ${busy ? 'busy' : ''}" ${busy ? 'disabled' : ''}>${t}</button>`;
   }).join('');
@@ -345,6 +356,7 @@ async function confirmMoney() {
     status: 'confirmado', createdAt: new Date().toISOString(),
   };
   const list = loadBookings(); list.unshift(booking); saveBookings(list);
+  filaSync(booking);
   await renderTimes();
   toast('Agendamento salvo! Abrindo WhatsApp...');
   openWhatsApp(booking);
@@ -432,6 +444,7 @@ async function generatePixBooking() {
     status: 'aguardando pagamento', createdAt: new Date().toISOString(),
   };
   const list = loadBookings(); list.unshift(pixBooking); saveBookings(list);
+  filaSync(pixBooking);
   showStep(5);
   renderPixArea();
 
@@ -550,7 +563,9 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     // se for forçado, ignora o "Depois" — sempre aparece
     if (!forcar && silencioso && adiado > Date.now() - 5 * 60 * 1000) return null;   // "Depois" lembra por 5 minutos
 
-    const asset = (rel.assets || []).find((a) => /\.apk$/i.test(a.name));
+    const asset = (rel.assets || []).find(
+      (a) => /\.apk$/i.test(a.name) && !/^painel/i.test(a.name)
+    );
     mostrarAtualizacao(nova, rel, asset, forcar);
     return nova;
   } catch (e) {
@@ -684,6 +699,53 @@ async function chamarApi(rota, opcoes) {
   }
   throw ultimoErro || new Error('servidor nao encontrado');
 }
+
+// ---------- envia o agendamento para o PAINEL do barbeiro ----------
+// Se o computador estiver desligado, fica na fila e tenta de novo sozinho.
+const LS_SYNC = 'barbearia_sync_v1';
+function filaSync(b) {
+  if (!b || !b.id) return;
+  try {
+    const fila = JSON.parse(localStorage.getItem(LS_SYNC) || '{}');
+    fila[b.id] = b;
+    localStorage.setItem(LS_SYNC, JSON.stringify(fila));
+  } catch { /* ignora */ }
+}
+async function descarregarSync() {
+  let fila = {};
+  try { fila = JSON.parse(localStorage.getItem(LS_SYNC) || '{}'); } catch { return; }
+  const ids = Object.keys(fila);
+  if (!ids.length) return;
+  const restantes = { ...fila };
+  for (const id of ids) {
+    try {
+      await chamarApi('/api/agendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fila[id]),
+      });
+      delete restantes[id];
+    } catch { break; } // servidor fora do ar — tenta de novo mais tarde
+  }
+  try { localStorage.setItem(LS_SYNC, JSON.stringify(restantes)); } catch { /* ignora */ }
+}
+
+// ---------- status aberto/fechado vindo do painel do barbeiro ----------
+let statusLoja = { modo: 'auto', aberto: null, abreAs: null, fechaAs: null, ok: false };
+async function carregarStatusLoja() {
+  try {
+    const s = await chamarApi('/api/status');
+    if (s && s.abreAs) {
+      statusLoja = { ...s, ok: true };
+      renderToday();
+      renderTimes();
+      renderCalendar();
+    }
+  } catch { /* sem servidor: usa o horario padrao do site */ }
+}
+const minutosDe = (t) => { const [h, m] = String(t || '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+const abreAsLoja = () => statusLoja.ok ? (statusLoja.abreAs || '09:00') : '09:00';
+const fechaAsLoja = () => statusLoja.ok ? (statusLoja.fechaAs || '21:00') : '21:00';
 
 // ---------- abre a espera do pagamento no link fixo ----------
 async function avisarServidor(b) {
@@ -1031,16 +1093,23 @@ async function renderToday() {
 
   label.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
+  // o barbeiro forcou o fechamento pelo painel
+  if (statusLoja.modo === 'manual' && statusLoja.aberto === false) {
+    box.innerHTML = '<span class="closed-big">🔴 Fechado agora</span><p class="tiny">Fale com a barbearia pelo WhatsApp para confirmar a vaga.</p>';
+    return;
+  }
   if (now.getDay() === CONFIG.CLOSED_WEEKDAY) {
     box.innerHTML = '<span class="closed-big">🔴 Fechado hoje</span><p class="tiny">Voltamos amanhã às 09:00</p>';
     return;
   }
-  if (mins < OPEN_MIN) {
-    box.innerHTML = `<span class="closed-big">🔴 Abre às 09:00</span><p class="tiny">Volte em ${Math.floor((OPEN_MIN - mins) / 60)}h${String((OPEN_MIN - mins) % 60).padStart(2, '0')}</p>`;
+  const abreM = minutosDe(abreAsLoja());
+  const fechaM = minutosDe(fechaAsLoja());
+  if (mins < abreM) {
+    box.innerHTML = `<span class="closed-big">🔴 Abre às ${abreAsLoja()}</span><p class="tiny">Volte em ${Math.floor((abreM - mins) / 60)}h${String((abreM - mins) % 60).padStart(2, '0')}</p>`;
     return;
   }
-  if (mins > CLOSE_MIN) {
-    box.innerHTML = '<span class="closed-big">🔴 Encerrado</span><p class="tiny">Voltamos amanhã às 09:00</p>';
+  if (mins > fechaM) {
+    box.innerHTML = `<span class="closed-big">🔴 Encerrado</span><p class="tiny">Voltamos amanhã às ${abreAsLoja()}</p>`;
     return;
   }
 
@@ -1119,17 +1188,6 @@ $('btnAjustes').onclick = abrirAjustes;
 $('btnFecharAjustes').onclick = fecharAjustes;
 // modo tecnico removido - nao aparece mais nada de servidor ou repositorio
 // repositorio configurado no codigo, nao precisa de botao na tela
-$('btnLimparDados').onclick = () => {
-  if (!confirm('Apagar todos os agendamentos salvos neste aparelho?')) return;
-  localStorage.removeItem('barbearia_bookings_v1');
-  localStorage.removeItem('barbearia_servidor_v1');
-  localStorage.removeItem('barbearia_repo_v1');
-  localStorage.removeItem('barbearia_update_adiado');
-  localStorage.removeItem('barbearia_ultima_invisivel');
-  localStorage.removeItem('barbearia_app_fechado');
-  toast('Dados apagados. Reinicie o app.');
-  setTimeout(() => location.reload(), 1500);
-};
 $('btnVerificarUpdate').onclick = async () => {
   $('updStatus').textContent = 'Procurando...';
   // fecha o modal de ajustes e mostra o popup de atualizacao
@@ -1208,6 +1266,10 @@ window.addEventListener('load', () => {
   // so mostra o botao flutuante se houver pagamento confirmado
   checkPixOnLoad();
   checarServidor();
+  // envia os agendamentos que ficaram na fila (PC estava desligado) e pega o horario atual
+  descarregarSync();
+  carregarStatusLoja();
+  setInterval(() => { descarregarSync(); carregarStatusLoja(); }, 60 * 1000);
   // garante scroll no topo depois de tudo renderizar
   window.scrollTo(0, 0);
   setTimeout(() => window.scrollTo(0, 0), 100);

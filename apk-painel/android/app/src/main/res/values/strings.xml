@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Painel Barbearia</string>
+    <string name="title_activity_main">Painel Barbearia</string>
+    <string name="package_name">com.barbeariadojota.painel</string>
+    <string name="custom_url_scheme">com.barbeariadojota.painel</string>
+</resources>

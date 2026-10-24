@@ -42,6 +42,50 @@ const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim();
 const API = 'https://api.checkout.infinitepay.io';
 const DB_FILE = path.join(__dirname, 'pagamentos.json');
 
+// ============================================================
+//  PAINEL DO BARBEIRO
+//  - guarda TODOS os agendamentos que o site mandar (painel.json)
+//  - manda o aberto/fechado e os horarios que o barbeiro escolher
+//  - o Painel (APK do barbeiro) ler com um PIN para nao expor os
+//    clientes para qualquer um.
+const PIN_PAINEL = String(process.env.PIN_PAINEL || '1234').trim(); // <- trocapelo .env ou aqui
+const PAINEL_FILE = path.join(__dirname, 'painel.json');
+// ============================================================
+
+const STATUS_PADRAO = { modo: 'auto', aberto: null, abreAs: '09:00', fechaAs: '21:00', atualizadoEm: null };
+function loadPainel() {
+  try {
+    if (!fs.existsSync(PAINEL_FILE)) return { status: { ...STATUS_PADRAO }, agendamentos: {} };
+    const d = JSON.parse(fs.readFileSync(PAINEL_FILE, 'utf8'));
+    if (!d || typeof d !== 'object') throw new Error('arquivo ruim');
+    if (!d.agendamentos || typeof d.agendamentos !== 'object') d.agendamentos = {};
+    d.status = { ...STATUS_PADRAO, ...(d.status || {}) };
+    return d;
+  } catch {
+    return { status: { ...STATUS_PADRAO }, agendamentos: {} };
+  }
+}
+function savePainel(d) {
+  try { fs.writeFileSync(PAINEL_FILE, JSON.stringify(d, null, 2)); }
+  catch (e) { console.error('[painel] nao consegui salvar:', e.message); }
+}
+// diz se esta aberto agora, pelo statusdo painel
+function calcularAberto(st) {
+  if (!st) return false;
+  if (st.modo === 'manual') return st.aberto !== false; // quando forcado, vale a palavra do barbeiro
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins >= minutosDe(st.abreAs) && mins <= minutosDe(st.fechaAs);
+}
+const minutosDe = (t) => {
+  const [h, m] = String(t || '09:00').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+const pinOk = (req) => {
+  const q = (req.query && req.query.pin) != null ? req.query.pin : ((req.body || {}).pin);
+  return String(q || '') === PIN_PAINEL;
+};
+
 app.use(cors());
 app.use(express.json({ limit: '200kb' }));
 
@@ -133,6 +177,65 @@ app.get('/api/link', (req, res) => {
 });
 
 // ============================================================
+//  PAINEL: status publico (site usa para abrir/fechar e horarios)
+// ============================================================
+app.get('/api/status', (req, res) => {
+  const st = loadPainel().status;
+  const now = new Date();
+  res.json({
+    modo: st.modo,
+    aberto: calcularAberto(st),
+    abreAs: st.abreAs,
+    fechaAs: st.fechaAs,
+    weekday: now.getDay(),
+    atualizadoEm: st.atualizadoEm,
+  });
+});
+
+// Painel (APK do barbeiro, com PIN): tudo — status + agendamentos
+app.get('/api/painel', (req, res) => {
+  if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
+  const p = loadPainel();
+  const agendamentos = Object.values(p.agendamentos).sort((a, b) => {
+    const da = `${a.dateKey || ''} ${a.time || ''}`;
+    const db = `${b.dateKey || ''} ${b.time || ''}`;
+    if (da === db) return (b.createdAt || '').localeCompare(a.createdAt || '');
+    return da > db ? 1 : -1;
+  });
+  res.json({ status: p.status, aberto: calcularAberto(p.status), agendamentos });
+});
+
+// Painel: o barbeiro marca aberto/fechado e os horarios
+app.post('/api/painel/status', (req, res) => {
+  if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
+  const { modo, aberto, abreAs, fechaAs } = req.body || {};
+  const p = loadPainel();
+  if (modo === 'auto' || modo === 'manual') p.status.modo = modo;
+  if (modo === 'manual' && aberto != null) p.status.aberto = !!aberto;
+  if (abreAs && /^\d{1,2}:\d{2}$/.test(String(abreAs))) p.status.abreAs = String(abreAs).padStart(5, '0');
+  if (fechaAs && /^\d{1,2}:\d{2}$/.test(String(fechaAs))) p.status.fechaAs = String(fechaAs).padStart(5, '0');
+  p.status.atualizadoEm = new Date().toISOString();
+  savePainel(p);
+  console.log(`[painel] status: modo=${p.status.modo} aberto=${calcularAberto(p.status)} janela ${p.status.abreAs}-${p.status.fechaAs}`);
+  res.json({ ok: true, status: p.status, aberto: calcularAberto(p.status) });
+});
+
+// O site manda cada agendamento novo para ficar salvo no Painel
+app.post('/api/agendar', (req, res) => {
+  const b = req.body || {};
+  if (!b.id) return res.status(400).json({ error: 'falta o id' });
+  const p = loadPainel();
+  const jaTinha = !!p.agendamentos[b.id];
+  p.agendamentos[b.id] = {
+    ...p.agendamentos[b.id], ...b,
+    recebidoEm: jaTinha ? p.agendamentos[b.id].recebidoEm : new Date().toISOString(),
+  };
+  savePainel(p);
+  console.log(`[painel] agendamento ${b.id} — ${b.clientName || '?'} · ${b.dateLabel || '?'} ${b.time || ''} (${b.payMethod || '?'})`);
+  res.json({ ok: true });
+});
+
+// ============================================================
 // Abre a espera do pagamento de um agendamento.
 //   link_unico: cria a cobranca agora
 //   link_fixo :  guarda como o link esta, para comparar depois
@@ -153,6 +256,18 @@ app.post('/api/aguardar', async (req, res) => {
 
     const descricao = `Sinal ${SIGNAL_VALUE.toFixed(2).replace('.', ',')} - ${serviceName || ''} ${dateLabel || ''} ${time || ''} - ${bookingId}`;
     const valor = centavos(SIGNAL_VALUE);
+
+    // garante que o agendamento aparece no painel do barbeiro
+    const pPainel = loadPainel();
+    if (!pPainel.agendamentos[bookingId]) {
+      pPainel.agendamentos[bookingId] = {
+        id: bookingId, clientName: clientName || '', clientPhone: (req.body || {}).clientPhone || '',
+        serviceName: serviceName || '', dateLabel: dateLabel || '', time: time || '',
+        payMethod: 'pix', pixStatus: 'aguardando',
+        createdAt: new Date().toISOString(), recebidoEm: new Date().toISOString(),
+      };
+      savePainel(pPainel);
+    }
 
     if (MODO === 'link_fixo') {
       if (!SLUG_FIXO) return res.status(503).json({ error: 'SEM_LINK_FIXO' });
@@ -197,6 +312,13 @@ app.get('/api/conferir/:bookingId', async (req, res) => {
 
     if (caiu && !registro.jaPagoAntes) {
       setPagamento(bookingId, { pago: true, confirmadoEm: new Date().toISOString() });
+      // marca pago no painel do barbeiro tambem
+      const pPainel = loadPainel();
+      if (pPainel.agendamentos[bookingId]) {
+        pPainel.agendamentos[bookingId].pixStatus = 'pago';
+        pPainel.agendamentos[bookingId].status = 'confirmado';
+        savePainel(pPainel);
+      }
       console.log(`[pix] PAGO: ${bookingId}`);
       return res.json({ pago: true, valor: registro.valor });
     }
