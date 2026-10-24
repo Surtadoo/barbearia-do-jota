@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.14',
+  APP_VERSION: '1.0.15',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -810,7 +810,7 @@ async function processarCanal(texto) {
       // mudanca de aberto/fechado do barbeiro
       if ((Number(p.s.ts) || 0) > (Number(statusLoja.ts) || 0)) aplicarStatusLoja(p.s);
     } else if (p && p.t === 'p' && p.b && p.b.id && p.b.pixStatus === 'pago') {
-      // o servidor do PC confirmou o Pix: marca pago e libera o botao do WhatsApp
+      // a barbearia (ou o PC) confirmou o Pix: marca pago e libera o WhatsApp
       const atual = loadBookings().find((b) => b.id === p.b.id);
       if (atual && atual.pixStatus !== 'pago') {
         updateBooking(p.b.id, { pixStatus: 'pago', status: p.b.status || 'confirmado' });
@@ -820,6 +820,7 @@ async function processarCanal(texto) {
           renderPixArea();
         }
         checkPixOnLoad();
+        toast('✅ Sinal confirmado! Agora é só enviar no WhatsApp.');
       }
     }
   }
@@ -914,6 +915,7 @@ function renderPixArea() {
     $('pixOffline').classList.add('hidden');
     $('pixEspera').innerHTML = '✅ <b>Pagamento confirmado pela InfinitePay</b>';
     $('btnPagarAgora').classList.add('hidden');
+    if ($('btnJaPaguei')) $('btnJaPaguei').classList.add('hidden');
     $('pixCode').value = 'PAGAMENTO CONFIRMADO';
   }
 
@@ -977,28 +979,27 @@ function qrDe(texto, tamanho) {
     + '&margin=6&data=' + encodeURIComponent(texto);
 }
 
-// ---------- backend fora do ar: modo manual, sem liberar nada sozinho ----------
+// ---------- backend fora do ar: o Pix continua funcionando na mão ----------
+// copia e cola de VERDADE (Pix EMV com o valor do sinal travado na chave
+// da barbearia) + botão "Já paguei" que avisa no WhatsApp. Sem PC, funciona igual.
 function mostrarOffline(motivo) {
   pararConferencia();
   $('pixGerando').classList.add('hidden');
   $('pixPronto').classList.add('hidden');
   $('pixOffline').classList.remove('hidden');
-  $('pixOfflineMsg').innerHTML =
-    '<b>O Pix automático não está funcionando agora.</b><br>'
-    + 'O site não conseguiu falar com o servidor de pagamento.<br>'
-    + 'Se você está no computador: abra <b>iniciar-tudo.bat</b>.<br>'
-    + 'Se você está no aplicativo: toque na <b>engrenagem ⚙️</b> lá em cima e confira o endereço do servidor.<br><br>'
-    + 'Enquanto isso você pode pagar direto na chave abaixo:';
   const chave = PIX_KEY_OK() ? CONFIG.PIX_KEY : '';
-  $('pixManual').classList.toggle('hidden', !chave);
-  $('pixChaveManual').value = chave;
-  if (!chave) {
-    $('pixOfflineMsg').innerHTML =
-      '<b>O Pix automático não está funcionando agora.</b><br>'
+  const payload = chave ? buildPixPayload(chave, CONFIG.SIGNAL_VALUE, pixBooking ? pixBooking.id : '') : '';
+  $('pixManual').classList.toggle('hidden', !payload);
+  $('pixChaveManual').value = payload;
+  $('pixOfflineMsg').innerHTML = payload
+    ? '<b>O conferimento automático do Pix está fora do ar neste momento.</b><br>'
+      + 'Você ainda pode pagar o sinal de <b>' + BRL(CONFIG.SIGNAL_VALUE) + '</b> agora mesmo: '
+      + 'toque em <b>Copiar</b> e cole no app do seu banco (ou aponte a câmera para o QR).<br><br>'
+      + 'Depois toque no botão <b>“✅ Já paguei — avisar a barbearia”</b>: abre o WhatsApp com o aviso pronto '
+      + 'e a barbearia confirma, garantindo sua vaga.'
+    : '<b>O conferimento automático do Pix está fora do ar agora.</b><br>'
       + 'Fale com a barbearia pelo WhatsApp para concluir seu agendamento.';
-  }
-  $('pixDebug').textContent = `Motivo: ${motivo} · endereços tentados: ${servidores().join(', ')}`;
-  showPixQr('');
+  showPixQr(payload);
   console.warn('[pix] backend indisponivel:', motivo);
 }
 
@@ -1283,9 +1284,26 @@ $('btnNextPix').onclick = generatePixBooking;
 $('btnCopiarChave').onclick = async () => {
   const chave = $('pixChaveManual').value;
   if (!chave) return;
-  try { await navigator.clipboard.writeText(chave); toast('Chave copiada!'); }
-  catch { $('pixChaveManual').select(); toast('Segure e copie a chave.'); }
+  try { await navigator.clipboard.writeText(chave); toast('Código Pix copiado!'); }
+  catch { $('pixChaveManual').select(); toast('Segure e copie o código Pix.'); }
 };
+
+// "Ja paguei o Pix": abre o WhatsApp com o aviso pronto para a barbearia
+function jaPagueiAvisar() {
+  const b = pixBooking;
+  if (!b) { toast('Complete o agendamento primeiro.'); return; }
+  const msg = [
+    `Oi! Já paguei o sinal de ${BRL(signalOf(b.price))} via Pix.`,
+    `Meu agendamento: ${b.serviceName} — ${b.dateLabel} às ${b.time}.`,
+    `Nome: ${b.clientName}`,
+    `Código da reserva: ${b.id}`,
+  ].join('\n');
+  const wpp = `https://wa.me/${String(CONFIG.BARBER_WHATSAPP).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+  try { window.open(wpp, '_blank', 'noopener'); } catch { location.href = wpp; }
+  toast('Aviso enviado no WhatsApp! A barbearia confirma e sua vaga fica segura.');
+}
+$('btnJaPaguei').onclick = jaPagueiAvisar;
+$('btnAvisarPago').onclick = jaPagueiAvisar;
 $('btnCopyPix').onclick = async () => {
   const code = $('pixCode').value;
   if (!code) return toast('Sem código para copiar.');
@@ -1381,6 +1399,17 @@ function ajustarTarjaDoTopo() {
 window.addEventListener('load', () => {
   window.scrollTo(0, 0);
   ajustarTarjaDoTopo();
+  // botões "Reservar horário" / "Agendar agora" descem SUAVE até a etapa do corte
+  document.querySelectorAll('a[href="#servicos"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const alvo = document.getElementById('servicos');
+      if (alvo) {
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.replaceState(null, '', '#servicos');
+      }
+    });
+  });
   initCalendar();
   initCarrossel();
   renderAll();

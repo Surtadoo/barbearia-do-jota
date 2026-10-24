@@ -13,7 +13,7 @@
 // ============================================================
 
 const CONFIG = {
-  APP_VERSION: '1.0.14',
+  APP_VERSION: '1.0.15',
 
   // Repositório do GitHub onde os APK são publicados.
   GITHUB_USER: 'Surtadoo',
@@ -229,6 +229,9 @@ function cardAg(b) {
   const digits = String(b.clientPhone || '').replace(/\D/g, '');
   const wpp = digits ? `https://wa.me/55${digits.length <= 11 ? '55' + digits : digits}?text=${encodeURIComponent('Olá! Sobre seu agendamento na Barbearia do Jota.')}` : null;
   const obs = b.note ? `<small>💬 "${esc(String(b.note).slice(0, 80))}"</small>` : '';
+  // para Pix pendente: botao que confere o dinheiro na conta do barbeiro
+  const btnPago = (b.payMethod === 'pix' && b.pixStatus !== 'pago')
+    ? `<button class="btn-pago" data-id="${esc(b.id)}">✅ Marcar sinal pago</button>` : '';
   return `<div class="ag">
     <div class="ag-hora">${esc(b.time) || '--:--'}</div>
     <div class="ag-meio">
@@ -241,6 +244,7 @@ function cardAg(b) {
     <div class="ag-lado">
       <span class="badge ${classe}">${rotulo}</span>
       <span class="preco">${b.price ? BRL(b.price) : ''}</span>
+      ${btnPago}
     </div>
   </div>`;
 }
@@ -319,6 +323,33 @@ function ligarCanal() {
     };
   } catch { /* sem internet — tenta de novo na proxima volta */ }
 }
+
+// ---------- confirmar o que o Pix caiu (o barbeiro ve na conta dele) ----------
+async function confirmarPixSinal(id) {
+  if (!id) return;
+  const b = lerLocais()[id];
+  if (!b || b.pixStatus === 'pago') return;
+  // marca aqui mesmo e avisa o APLICATIVO do cliente pela internet
+  registrar({ id, pixStatus: 'pago', status: 'confirmado', confirmadoPor: 'barbeiro' }, { avisaNovo: false });
+  pintarLista();
+  publicarCanal({ t: 'p', b: { id, pixStatus: 'pago', status: 'confirmado' } });
+  vibrar();
+  toast('✅ Sinal marcado como pago! O cliente já é avisado.');
+  // se o PC estiver ligado, guarda a confirmacao na central tambem
+  try {
+    await chamarApi('/api/painel/pago', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinAtual(), id }),
+    });
+  } catch { /* PC desligado — o aviso pela internet ja saiu */ }
+}
+
+// clicou no botao de pagar? (delegacao: funciona em toda a lista)
+$('listaAg').addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-pago');
+  if (btn) { e.preventDefault(); confirmarPixSinal(btn.dataset.id); }
+});
 
 function vibrar() {
   try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch { /* fora */ }

@@ -219,6 +219,30 @@ app.get('/api/painel', (req, res) => {
   res.json({ status: p.status, aberto: calcularAberto(p.status), agendamentos });
 });
 
+// Painel: o barbeiro confirmou o Pix na mao (visto na conta dele)
+app.post('/api/painel/pago', (req, res) => {
+  if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'falta o id' });
+  const p = loadPainel();
+  if (!p.agendamentos[id]) return res.status(404).json({ error: 'agendamento nao existe' });
+  if (p.agendamentos[id].pixStatus !== 'pago') {
+    p.agendamentos[id].pixStatus = 'pago';
+    p.agendamentos[id].status = 'confirmado';
+    p.agendamentos[id].confirmadoPor = 'barbeiro';
+    savePainel(p);
+  }
+  // se houver registro de cobranca, marca pago tambem (evita confirmacao dupla)
+  const registro = getPagamento(id);
+  if (!registro || !registro.pago) {
+    setPagamento(id, { pago: true, confirmadoEm: new Date().toISOString(), confirmadoPor: 'barbeiro' });
+  }
+  // avisa o APLICATIVO do cliente pelo canal — o dele muda na hora
+  publicarCanal({ t: 'p', b: { id, pixStatus: 'pago', status: 'confirmado' } });
+  console.log(`[painel] pago confirmado na mao: ${id}`);
+  res.json({ ok: true });
+});
+
 // Painel: o barbeiro marca aberto/fechado e os horarios
 app.post('/api/painel/status', (req, res) => {
   if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
