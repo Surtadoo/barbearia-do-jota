@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.15',
+  APP_VERSION: '1.0.16',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -10,7 +10,7 @@ const CONFIG = {
 
   BARBER_NAME: 'Barbearia do Jota',
   BARBER_ADDRESS: 'Rua Javata, 1506 - Anchieta',
-  BARBER_WHATSAPP: '5521990772663', // +55 21 99077-2663 (só dígitos)
+  BARBER_WHATSAPP: '5521980204832', // +55 21 98020-4832 (só dígitos)
 
   // Endereço do servidor que confere o Pix.
   // No computador: http://localhost:3001
