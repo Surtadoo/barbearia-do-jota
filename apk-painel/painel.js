@@ -13,7 +13,7 @@
 // ============================================================
 
 const CONFIG = {
-  APP_VERSION: '1.0.13',
+  APP_VERSION: '1.0.14',
 
   // Repositório do GitHub onde os APK são publicados.
   GITHUB_USER: 'Surtadoo',
@@ -40,6 +40,7 @@ CONFIG.NTFY_TOPIC = 'bjota-ag-7k2m9xI';
 const LS_SRV = 'painel_servidor_v1';
 const LS_PIN = 'painel_pin_v1';
 const LS_ADIA = 'painel_update_adiado';
+const LS_VISTO = 'painel_update_visto_v1'; // popup forcado aparece SO UMA VEZ por versao
 const LS_AG = 'painel_agendamentos_v1';   // agendamentos salvos no aparelho
 const LS_ST = 'painel_status_v1';          // ultimo status aberto/fechado
 
@@ -410,8 +411,11 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     if (!rel || !rel.tag_name) return null;
     const nova = String(rel.tag_name).replace(/^v/i, '');
     const notas = String(rel.body || '');
+    // forcar aparece mesmo com versao igual (rollback), MAS SO UMA VEZ por versao
     const forcar = /\[FORCAR\]|\[FORCE\]/i.test(notas);
-    if (!forcar && !versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
+    if (forcar) {
+      if (localStorage.getItem(LS_VISTO) === nova) return null;
+    } else if (!versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
     const adiado = Number(localStorage.getItem(LS_ADIA) || 0);
     if (!forcar && silencioso && adiado > Date.now() - 5 * 60 * 1000) return null;
     const asset = (rel.assets || []).find((a) => new RegExp('^' + CONFIG.ASSET_PREFIX + '.*\\.apk$', 'i').test(a.name));
@@ -423,17 +427,27 @@ async function checarAtualizacao({ silencioso = true } = {}) {
     return null;
   }
 }
-function mostrarAtualizacao(versao, notas, asset, forcar) {
-  $('updVersao').textContent = `Nova versão: ${versao}`;
+function mostrarAtualizacao(versao, notasBrutas, asset, forcar) {
+  // tira a tag [FORCAR] do texto que aparece para voce
+  const notas = String(notasBrutas || '').replace(/\[FORCAR\]|\[FORCE\]/gi, '').trim();
+  $('updVersao').textContent = forcar ? `⚠️ Atualização importante: ${versao}` : `Nova versão: ${versao}`;
   $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION}`;
   $('updNotas').innerHTML = notas ? notas.replace(/</g, '&lt;').replace(/\n/g, '<br>') : 'Correções e melhorias nesta versão.';
   const url = asset ? asset.browser_download_url : 'https://github.com/' + CONFIG.GITHUB_USER + '/' + CONFIG.GITHUB_REPO + '/releases';
   $('btnAtualizar').textContent = '⬇️ Atualizar agora';
   $('btnAtualizar').disabled = false;
-  $('btnAtualizar').onclick = () => baixarEInstalar(url);
+  $('btnAtualizar').onclick = () => {
+    localStorage.setItem(LS_VISTO, versao);
+    baixarEInstalar(url);
+  };
   $('btnDepois').textContent = forcar ? 'Fechar' : 'Depois';
   $('btnDepois').onclick = () => {
-    if (forcar) { $('modalUpdate').classList.add('hidden'); return; }
+    if (forcar) {
+      // fechou = ja viu nessa versao (nao volta mais nesta)
+      localStorage.setItem(LS_VISTO, versao);
+      $('modalUpdate').classList.add('hidden');
+      return;
+    }
     localStorage.setItem(LS_ADIA, String(Date.now()));
     $('modalUpdate').classList.add('hidden');
   };

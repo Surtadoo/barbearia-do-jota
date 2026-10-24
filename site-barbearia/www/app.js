@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.13',
+  APP_VERSION: '1.0.14',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -490,6 +490,7 @@ const PIX_KEY_OK = () => {
 // ============================================================
 const LS_REPO = 'barbearia_repo_v1';
 const LS_UPDATE_PARA = 'barbearia_update_adiado';
+const LS_UPDATE_VISTO = 'barbearia_update_visto_v1'; // popup forcado aparece SO UMA VEZ por versao
 
 // "1.2.10" vira [1,2,10] para comparar numero por numero
 function versaoParaNumero(v) {
@@ -568,9 +569,13 @@ async function checarAtualizacao({ silencioso = true } = {}) {
 
     // FORCAR: se as notas da release contiverem [FORCAR] ou [FORCE],
     // o popup aparece mesmo que a versao seja menor (rollback).
+    // Mas SÓ UMA VEZ por versao — quem fechou, nao ve de novo nessa versao.
     const forcar = /\[FORCAR\]|\[FORCE\]/i.test(notas);
 
-    if (!forcar && !versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
+    if (forcar) {
+      // ja viu essa versao forcada? (so reaparece se vier OUTRA versao forcada)
+      if (localStorage.getItem(LS_UPDATE_VISTO) === nova) return null;
+    } else if (!versaoEhMaior(nova, CONFIG.APP_VERSION)) return null;
 
     const adiado = Number(localStorage.getItem(LS_UPDATE_PARA) || 0);
     // se for forçado, ignora o "Depois" — sempre aparece
@@ -603,7 +608,8 @@ function mostrarAvisoUpdate(texto) {
 }
 
 function mostrarAtualizacao(versao, release, asset, forcar) {
-  const notas = (release.body || '').trim().slice(0, 400);
+  // tira a tag [FORCAR] do texto que o cliente ve
+  const notas = String(release.body || '').replace(/\[FORCAR\]|\[FORCE\]/gi, '').trim().slice(0, 400);
   if (forcar) {
     $('updVersao').textContent = `⚠️ Atualização obrigatória ${versao}`;
     $('updAtual').textContent = `Você está na versão ${CONFIG.APP_VERSION} (será substituída)`;
@@ -616,10 +622,14 @@ function mostrarAtualizacao(versao, release, asset, forcar) {
     : 'Correções e melhorias nesta versão.';
   const link = asset ? asset.browser_download_url : release.html_url;
   $('btnAtualizar').textContent = '⬇️ Atualizar agora';
-  $('btnAtualizar').onclick = () => baixarEInstalar(link);
+  $('btnAtualizar').onclick = () => {
+    localStorage.setItem(LS_UPDATE_VISTO, versao);
+    baixarEInstalar(link);
+  };
   $('btnDepois').onclick = () => {
     if (forcar) {
-      // forçado: não deixa adiar, só fecha
+      // forçado: fecha e NAO volta nesta versao (aparece apenas 1 vez)
+      localStorage.setItem(LS_UPDATE_VISTO, versao);
       $('modalUpdate').classList.add('hidden');
       return;
     }
@@ -1193,7 +1203,7 @@ async function renderToday() {
     label.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
     const futurasAberto = TIME_SLOTS.filter((t) => slotMinutesOf(t) > mins);
     if (!futurasAberto.length) {
-      box.innerHTML = '<span class="closed-big">🟢 Aberto</span><p class="tiny">Acabaram as vagas de hoje — amanhã abre às ' + abreAsLoja() + '</p>';
+      box.innerHTML = '<span class="open-big">🟢 Aberto</span><p class="tiny">Acabaram as vagas de hoje — amanhã abre às ' + abreAsLoja() + '</p>';
       return;
     }
     const listA = await loadBookings();

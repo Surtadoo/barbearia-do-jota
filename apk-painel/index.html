@@ -7,10 +7,13 @@
   <link rel="stylesheet" href="styles.css">
   <style>
     /* ===== painel — gem de leitura simples ===== */
-    .painel-wrap{max-width:860px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+    .painel-wrap{max-width:640px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:14px}
+
+    /* o site empilha o topo no celular — no painel tem que ficar em linha */
+    .topbar-inner{flex-direction:row;align-items:center;justify-content:space-between}
 
     /* status: a pergunta e a resposta GRANDE */
-    .st-card{padding:18px}
+    .card.st-card{display:block;cursor:default;padding:18px}
     .pergunta{text-align:center;color:var(--muted);font-size:14px;margin:0 0 8px;font-weight:600}
     .st-grande{display:flex;align-items:center;justify-content:center;gap:10px;
       border-radius:14px;padding:18px 10px;font-size:22px;font-weight:900;letter-spacing:.5px}
