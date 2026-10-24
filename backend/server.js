@@ -201,6 +201,8 @@ app.get('/api/status', (req, res) => {
     aberto: calcularAberto(st),
     abreAs: st.abreAs,
     fechaAs: st.fechaAs,
+    neve: !!st.neve,
+    presente: !!st.presente,
     weekday: now.getDay(),
     atualizadoEm: st.atualizadoEm,
   });
@@ -246,16 +248,66 @@ app.post('/api/painel/pago', (req, res) => {
 // Painel: o barbeiro marca aberto/fechado e os horarios
 app.post('/api/painel/status', (req, res) => {
   if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
-  const { modo, aberto, abreAs, fechaAs } = req.body || {};
+  const { modo, aberto, abreAs, fechaAs, neve, presente } = req.body || {};
   const p = loadPainel();
   if (modo === 'auto' || modo === 'manual') p.status.modo = modo;
   if (modo === 'manual' && aberto != null) p.status.aberto = !!aberto;
   if (abreAs && /^\d{1,2}:\d{2}$/.test(String(abreAs))) p.status.abreAs = String(abreAs).padStart(5, '0');
   if (fechaAs && /^\d{1,2}:\d{2}$/.test(String(fechaAs))) p.status.fechaAs = String(fechaAs).padStart(5, '0');
+  if (typeof neve === 'boolean') p.status.neve = neve;
+  if (typeof presente === 'boolean') p.status.presente = presente;
   p.status.atualizadoEm = new Date().toISOString();
   savePainel(p);
+  // avisa TODOS os clientes pela internet: horarios e natal mudam na hora
+  publicarCanal({
+    t: 's',
+    s: {
+      modo: p.status.modo,
+      aberto: p.status.modo === 'manual' ? (p.status.aberto !== false) : null,
+      abreAs: p.status.abreAs,
+      fechaAs: p.status.fechaAs,
+      neve: !!p.status.neve,
+      presente: !!p.status.presente,
+      ts: Date.now(),
+    },
+  });
   console.log(`[painel] status: modo=${p.status.modo} aberto=${calcularAberto(p.status)} janela ${p.status.abreAs}-${p.status.fechaAs}`);
   res.json({ ok: true, status: p.status, aberto: calcularAberto(p.status) });
+});
+
+// Painel: o barbeiro EDITOU um agendamento (dia/hora/nome/etc)
+app.post('/api/painel/editar', (req, res) => {
+  if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
+  const { id, pin, ...campos } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'falta o id' });
+  const p = loadPainel();
+  if (!p.agendamentos[id]) return res.status(404).json({ error: 'agendamento nao existe' });
+  p.agendamentos[id] = { ...p.agendamentos[id], ...campos, editadoEm: new Date().toISOString() };
+  savePainel(p);
+  // muda na hora no app/site do cliente
+  publicarCanal({ t: 'e', b: p.agendamentos[id] });
+  console.log(`[painel] agendamento editado: ${id}`);
+  res.json({ ok: true });
+});
+
+// Painel: o barbeiro EXCLUIU um agendamento (some no app/site do cliente)
+app.post('/api/painel/remover', (req, res) => {
+  if (!pinOk(req)) return res.status(401).json({ error: 'PIN errado.' });
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'falta o id' });
+  const p = loadPainel();
+  if (p.agendamentos[id]) {
+    delete p.agendamentos[id];
+    savePainel(p);
+  }
+  const g = loadDB();
+  if (g.pagamentos && g.pagamentos[id]) {
+    delete g.pagamentos[id];
+    saveDB(g);
+  }
+  publicarCanal({ t: 'd', b: { id } });
+  console.log(`[painel] agendamento excluido: ${id}`);
+  res.json({ ok: true });
 });
 
 // O site manda cada agendamento novo para ficar salvo no Painel

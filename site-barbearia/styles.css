@@ -259,3 +259,14 @@ footer{padding:32px 0;color:var(--muted);font-size:14px;text-align:center}
 .step-nav .btn-gold{margin-left:auto}
 .pix-actions{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 #pixResultado{margin-top:10px}
+
+/* ===== Natal (ligado pelo barbeiro no Painel) ===== */
+#neveLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:120}
+.floco{position:absolute;top:-26px;color:#cfe8ff;text-shadow:0 0 6px rgba(130,190,255,.55);
+  animation:neveCair linear forwards;will-change:transform}
+@keyframes neveCair{to{transform:translateY(110vh) rotate(360deg)}}
+#btnPresente{position:fixed;left:14px;bottom:16px;z-index:121;font-size:36px;line-height:1;
+  background:transparent;border:none;padding:6px;cursor:pointer;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.55));animation:presenteBalanca 1.8s ease-in-out infinite}
+@keyframes presenteBalanca{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+#modalNatal .modal-card{max-width:340px}

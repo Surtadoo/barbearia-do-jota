@@ -49,6 +49,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- para o Android aceitar instalar o APK atualizado -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- para o celular VIBRAR quando chegar agendamento -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- para mostrar a notificacao de agendamento novo (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />

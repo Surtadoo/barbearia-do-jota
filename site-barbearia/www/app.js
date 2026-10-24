@@ -1,7 +1,7 @@
 // ===== CONFIG CENTRAL — edite aqui =====
 const CONFIG = {
   // Versão do aplicativo. Aumente este número toda vez que publicar um APK novo.
-  APP_VERSION: '1.0.17',
+  APP_VERSION: '1.0.18',
 
   // Repositório do GitHub onde os APK são publicados.
   // Precisa ser PUBLICO, senão o aplicativo não consegue ler as versões.
@@ -289,11 +289,11 @@ async function renderTimes() {
     // fora do horario definido pelo barbeiro no painel
     if (!forcouAberto && (slotMinutes < abreM || slotMinutes > fechaM)) return '';
     if (expired) return '';
-    return `<button class="slot ${t === time ? 'selected' : ''} ${busy ? 'busy' : ''}" ${busy ? 'disabled' : ''}>${t}</button>`;
+    return `<button class="slot ${t === time ? 'selected' : ''} ${busy ? 'busy' : ''}" ${busy ? 'disabled' : ''} data-t="${t}">${t}</button>`;
   }).join('');
   box.querySelectorAll('.slot:not(.busy)').forEach((el) => {
     el.onclick = async () => {
-      time = el.textContent;
+      time = el.dataset.t || el.textContent.trim();
       await renderTimes();
       renderResume();
     };
@@ -347,7 +347,8 @@ function collectOrToast() {
   if (name.trim().length < 3) { toast('Digite seu nome completo.'); return null; }
   if (phone.replace(/\D/g, '').length < 10) { toast('Digite seu WhatsApp com DDD.'); return null; }
   if (!dayKey) { toast('Escolha o dia.'); return null; }
-  if (!time) { toast('Escolha a hora.'); return null; }
+  // trava contra hora errada: so aceita um horario que esta na grade da etapa 3
+  if (!time || !TIME_SLOTS.includes(time)) { toast('Escolha a hora de novo.'); time = null; renderTimes(); showStep(3); return null; }
   return { name: name.trim(), phone: phone.trim(), note: note.trim() };
 }
 
@@ -801,6 +802,7 @@ function aplicarStatusLoja(s) {
   renderToday();
   renderTimes();
   renderCalendar();
+  renderNatal();
 }
 
 // decodifica cada linha do canal (chega por SSE ou pela consulta)
@@ -813,6 +815,27 @@ async function processarCanal(texto) {
     if (p && p.t === 's' && p.s) {
       // mudanca de aberto/fechado do barbeiro
       if ((Number(p.s.ts) || 0) > (Number(statusLoja.ts) || 0)) aplicarStatusLoja(p.s);
+    } else if (p && p.t === 'e' && p.b && p.b.id) {
+      // a barbearia EDITOU o agendamento (dia/hora/etc): atualiza aqui na hora
+      const atual = loadBookings().find((b) => b.id === p.b.id);
+      if (atual) {
+        updateBooking(p.b.id, { ...p.b });
+        if (pixBooking && pixBooking.id === p.b.id) {
+          pixBooking = { ...pixBooking, ...p.b };
+          renderPixArea();
+        }
+        renderAll();
+        toast('✏️ A barbearia atualizou seu agendamento.');
+      }
+    } else if (p && p.t === 'd' && p.b && p.b.id) {
+      // a barbearia EXCLUIU o agendamento: some daqui na hora
+      const atual = loadBookings().find((b) => b.id === p.b.id);
+      if (atual) {
+        saveBookings(loadBookings().filter((b) => b.id !== p.b.id));
+        if (pixBooking && pixBooking.id === p.b.id) pixBooking = null;
+        renderAll();
+        toast('🗑️ Sua reserva foi cancelada pela barbearia. Fale no WhatsApp se tiver dúvida.');
+      }
     } else if (p && p.t === 'p' && p.b && p.b.id && p.b.pixStatus === 'pago') {
       // a barbearia (ou o PC) confirmou o Pix: marca pago e libera o WhatsApp
       const atual = loadBookings().find((b) => b.id === p.b.id);
@@ -847,10 +870,95 @@ async function carregarStatusLoja() {
     const resp = await fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/json?poll=1&since=12h`);
     await processarCanal(await resp.text());
   } catch { /* sem internet — usa o que ja tenho em casa */ }
+  // reforco: se o PC estiver ligado, confere o status central (horarios definidos
+  // no Painel aparecem aqui mesmo se o canal da internet falhar)
+  try {
+    const r2 = await chamarApi('/api/status');
+    if (r2 && (r2.modo === 'auto' || r2.modo === 'manual')) {
+      const ts2 = Date.parse(r2.atualizadoEm) || 0;
+      if (ts2 > (Number(statusLoja.ts) || 0)) {
+        aplicarStatusLoja({
+          modo: r2.modo,
+          aberto: r2.modo === 'manual' ? !!r2.aberto : null,
+          abreAs: r2.abreAs,
+          fechaAs: r2.fechaAs,
+          neve: !!r2.neve,
+          presente: !!r2.presente,
+          ts: ts2,
+        });
+      }
+    }
+  } catch { /* PC desligado — o canal da internet cobre */ }
 }
 const minutosDe = (t) => { const [h, m] = String(t || '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 const abreAsLoja = () => statusLoja.ok ? (statusLoja.abreAs || '09:00') : '09:00';
 const fechaAsLoja = () => statusLoja.ok ? (statusLoja.fechaAs || '21:00') : '21:00';
+
+// ============================================================
+//  NATAL — ligado pelo barbeiro no Painel (neve + presente)
+// ============================================================
+let neveTimer = null;
+function renderNatal() {
+  // --- neve caindo na tela toda ---
+  let layer = document.getElementById('neveLayer');
+  if (statusLoja.neve) {
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'neveLayer';
+      document.body.appendChild(layer);
+      neveTimer = setInterval(() => {
+        const onde = document.getElementById('neveLayer');
+        if (!onde) return;
+        if (onde.childElementCount > 40) return;   // nao enche a memoria
+        const f = document.createElement('span');
+        f.className = 'floco';
+        f.textContent = Math.random() < 0.15 ? '❅' : '❄';
+        f.style.left = (Math.random() * 100) + 'vw';
+        f.style.animationDuration = (5 + Math.random() * 7) + 's';
+        f.style.fontSize = (10 + Math.random() * 16) + 'px';
+        f.style.opacity = (0.45 + Math.random() * 0.55).toFixed(2);
+        onde.appendChild(f);
+        setTimeout(() => f.remove(), 13000);
+      }, 380);
+    }
+  } else if (layer) {
+    if (neveTimer) { clearInterval(neveTimer); neveTimer = null; }
+    layer.remove();
+  }
+  // --- presente de natal (flutuante) ---
+  let gift = document.getElementById('btnPresente');
+  if (statusLoja.presente) {
+    if (!gift) {
+      gift = document.createElement('button');
+      gift.id = 'btnPresente';
+      gift.type = 'button';
+      gift.setAttribute('aria-label', 'Presente de Natal');
+      gift.textContent = '🎁';
+      gift.onclick = abrirPresente;
+      document.body.appendChild(gift);
+    }
+  } else if (gift) gift.remove();
+}
+
+function abrirPresente() {
+  if (document.getElementById('modalNatal')) return;
+  const fundo = document.createElement('div');
+  fundo.id = 'modalNatal';
+  fundo.className = 'modal';
+  fundo.innerHTML = `
+    <div class="modal-card" style="text-align:center">
+      <div style="font-size:64px;line-height:1" id="presenteEmoji">🎁</div>
+      <h2 style="margin-top:10px">Feliz Natal!</h2>
+      <p class="muted" style="margin-top:6px">A <b>Barbearia do Jota</b> deseja um Natal cheio de paz, saúde<br>e o corte sempre no ponto. 🎄✨</p>
+      <button id="btnFecharNatal" class="btn btn-gold btn-block" style="margin-top:14px">🎄 Fechar</button>
+    </div>`;
+  document.body.appendChild(fundo);
+  const emoji = fundo.querySelector('#presenteEmoji');
+  const presentes = ['🎁', '🎄', '✂️', '🎅', '⭐'];
+  let i = 0;
+  const troca = setInterval(() => { emoji.textContent = presentes[i = (i + 1) % presentes.length]; }, 700);
+  fundo.querySelector('#btnFecharNatal').onclick = () => { clearInterval(troca); fundo.remove(); };
+}
 
 // ---------- abre a espera do pagamento no link fixo ----------
 async function avisarServidor(b) {
@@ -1426,6 +1534,8 @@ window.addEventListener('load', () => {
   // envia os agendamentos que ficaram na fila (sem internet na hora)
   descarregarSync();
   carregarStatusLoja();
+  // natal: neve/presente salvos no cache aparecem enquanto o canal abre
+  renderNatal();
   // canal AO VIVO: aberto/fechado do Painel aparece na hora no site
   ligarCanalCliente();
   setInterval(() => { descarregarSync(); carregarStatusLoja(); }, 30 * 1000);

@@ -13,7 +13,7 @@
 // ============================================================
 
 const CONFIG = {
-  APP_VERSION: '1.0.17',
+  APP_VERSION: '1.0.18',
 
   // Repositório do GitHub onde os APK são publicados.
   GITHUB_USER: 'Surtadoo',
@@ -131,6 +131,7 @@ function pintarStatus() {
   if ($('mFechado')) $('mFechado').classList.toggle('on', statusLoja.modo === 'manual' && statusLoja.aberto === false);
   if ($('inpAbre') && statusLoja.abreAs) $('inpAbre').value = statusLoja.abreAs;
   if ($('inpFecha') && statusLoja.fechaAs) $('inpFecha').value = statusLoja.fechaAs;
+  pintarNatal();
 }
 
 // marcar o status: salva aqui, avisa os clientes PELA INTERNET e
@@ -186,15 +187,39 @@ function registrar(b, { avisaNovo = true } = {}) {
   } else if (b.pixStatus === 'pago' && atual.pixStatus !== 'pago') {
     loc[b.id] = { ...atual, ...b, pixStatus: 'pago', status: b.status || atual.status };
   } else if (String(b.createdAt || '') >= String(atual.createdAt || '')) {
+    // chegou versao mais nova (ou igual): ela ganha
     loc[b.id] = { ...atual, ...b };
+  } else {
+    // chegou versao MAIS ANTIGA (relógio do celular atrasado?):
+    // junta, mas os dados que ja estavam (mais novos) ficam por cima
+    loc[b.id] = { ...b, ...atual };
   }
   salvarLocais(loc);
   if (novo && avisaNovo) {
     vibrar();
+    // notificacao do Android (aparece na barra, com som e vibração)
+    try {
+      const aviso = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Aviso;
+      if (aviso) aviso.notificar({
+        titulo: '💈 Novo agendamento!',
+        texto: `${b.clientName || 'Cliente'} — ${b.time || ''} · ${b.dateLabel || ''}`,
+      }).catch(() => {});
+    } catch { /* sem o plugin, fica o toast mesmo */ }
     toast(`📋 Novo agendamento!\n${b.clientName || ''} — ${b.time || ''} ${b.dateLabel || ''}`);
     pintarLista();
   }
   return novo ? 'novo' : 'atualizou';
+}
+
+// tira um agendamento da lista (o cliente ve a mudança na hora pelo canal)
+function removerLocal(id, { avisa = true } = {}) {
+  const loc = lerLocais();
+  if (!loc[id]) return false;
+  delete loc[id];
+  salvarLocais(loc);
+  pintarLista();
+  if (avisa) toast('🗑️ Agendamento excluído.');
+  return true;
 }
 
 function listaAtual() {
@@ -232,6 +257,11 @@ function cardAg(b) {
   // para Pix pendente: botao que confere o dinheiro na conta do barbeiro
   const btnPago = (b.payMethod === 'pix' && b.pixStatus !== 'pago')
     ? `<button class="btn-pago" data-id="${esc(b.id)}">✅ Marcar sinal pago</button>` : '';
+  // editar e excluir: muda na hora no app/site do cliente
+  const mini = `<div class="mini-acoes">
+      <button class="btn-mini" data-id="${esc(b.id)}" title="Editar agendamento">✏️ Editar</button>
+      <button class="btn-mini perigo" data-id="${esc(b.id)}" title="Excluir agendamento">🗑️ Excluir</button>
+    </div>`;
   return `<div class="ag">
     <div class="ag-hora">${esc(b.time) || '--:--'}</div>
     <div class="ag-meio">
@@ -240,6 +270,7 @@ function cardAg(b) {
       <small>📅 ${esc(b.dateLabel) || esc(b.dateKey)}</small>
       ${obs}
       ${wpp ? `<a class="wpp-mini" href="${wpp}" target="_blank" rel="noopener">📞 Falar no WhatsApp</a>` : ''}
+      ${mini}
     </div>
     <div class="ag-lado">
       <span class="badge ${classe}">${rotulo}</span>
@@ -345,11 +376,100 @@ async function confirmarPixSinal(id) {
   } catch { /* PC desligado — o aviso pela internet ja saiu */ }
 }
 
-// clicou no botao de pagar? (delegacao: funciona em toda a lista)
+// clicou em algum botao do cartao? (delegacao: funciona em toda a lista)
 $('listaAg').addEventListener('click', (e) => {
-  const btn = e.target.closest('.btn-pago');
-  if (btn) { e.preventDefault(); confirmarPixSinal(btn.dataset.id); }
+  const btnPago = e.target.closest('.btn-pago');
+  if (btnPago) { e.preventDefault(); confirmarPixSinal(btnPago.dataset.id); return; }
+  const btnEd = e.target.closest('.btn-editar');
+  if (btnEd) { e.preventDefault(); abrirEditar(btnEd.dataset.id); return; }
+  const btnAp = e.target.closest('.btn-apagar');
+  if (btnAp) { e.preventDefault(); excluirAgendamento(btnAp.dataset.id); }
 });
+
+// ============================================================
+//  EDITAR / EXCLUIR AGENDAMENTO (muda na hora no app e no site)
+// ============================================================
+const DIAS_SEMANA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const MESES_ANO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+function labelDeDia(key) {
+  const p = String(key || '').split('-').map(Number);
+  if (p.length !== 3 || p.some(isNaN)) return '';
+  const dt = new Date(p[0], p[1] - 1, p[2]);
+  return `${DIAS_SEMANA[dt.getDay()]}, ${p[2]} de ${MESES_ANO[p[1] - 1]} de ${p[0]}`;
+}
+
+let editandoId = null;
+function abrirEditar(id) {
+  const b = lerLocais()[id];
+  if (!b) return;
+  editandoId = id;
+  $('eNome').value = b.clientName || '';
+  $('eFone').value = b.clientPhone || '';
+  $('eServico').value = b.serviceName || '';
+  $('eDia').value = b.dateKey || '';
+  $('eHora').value = b.time || '';
+  $('ePreco').value = b.price != null ? b.price : '';
+  $('eObs').value = b.note || '';
+  $('modalEditar').classList.remove('hidden');
+}
+
+$('btnFecharEditar').onclick = () => $('modalEditar').classList.add('hidden');
+
+$('btnSalvarEditar').onclick = async () => {
+  if (!editandoId) return;
+  const idAlvo = editandoId;
+  const dia = $('eDia').value;
+  const hora = $('eHora').value;
+  if (!$('eNome').value.trim()) { toast('Digite o nome do cliente.'); return; }
+  if (!dia || !hora) { toast('Escolha o dia e a hora.'); return; }
+  const p = dia.split('-').map(Number);
+  const patch = {
+    clientName: $('eNome').value.trim(),
+    clientPhone: $('eFone').value.trim(),
+    serviceName: $('eServico').value.trim(),
+    dateKey: dia,
+    dateLabel: labelDeDia(dia),
+    dow: DIAS_SEMANA[new Date(p[0], p[1] - 1, p[2]).getDay()],
+    time: hora,
+    note: $('eObs').value.trim(),
+  };
+  const preco = Number($('ePreco').value);
+  if (preco > 0) patch.price = preco;
+  registrar({ id: idAlvo, ...patch }, { avisaNovo: false });
+  pintarLista();
+  // avisa o APP/SITE do cliente — muda na hora
+  publicarCanal({ t: 'e', b: { id: idAlvo, ...patch } });
+  toast('✏️ Agendamento atualizado! O cliente já vê a mudança.');
+  $('modalEditar').classList.add('hidden');
+  editandoId = null;
+  // se o PC estiver ligado, guarda na central também
+  try {
+    await chamarApi('/api/painel/editar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinAtual(), id: idAlvo, ...patch }),
+    });
+  } catch { /* PC desligado — o aviso pela internet ja saiu */ }
+};
+
+async function excluirAgendamento(id) {
+  const b = lerLocais()[id];
+  if (!b) return;
+  if (!confirm(`Excluir o agendamento de ${b.clientName || '?'} — ${b.time || ''} ${b.dateLabel || ''}?`)) return;
+  removerLocal(id, { avisa: false });
+  // avisa o APP/SITE do cliente — some na hora
+  publicarCanal({ t: 'd', b: { id } });
+  vibrar();
+  toast('🗑️ Agendamento excluído. O cliente já foi avisado.');
+  try {
+    await chamarApi('/api/painel/remover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinAtual(), id }),
+    });
+  } catch { /* PC desligado — o aviso pela internet ja saiu */ }
+}
 
 function vibrar() {
   try { navigator.vibrate && navigator.vibrate([300, 120, 300]); } catch { /* fora */ }
@@ -524,6 +644,61 @@ $('btnVerificarUpdate').onclick = async () => {
 };
 
 // ============================================================
+//  RECUPERA O QUE PERDEU: o ntfy guarda 12 horas de mensagens.
+//  Se o Painel estava fechado quando o cliente agendou, pega aqui.
+// ============================================================
+async function pegarAtrasados() {
+  try {
+    const resp = await fetch(`${CONFIG.NTFY_URL}/${CONFIG.NTFY_TOPIC}/json?poll=1&since=12h`);
+    const txt = await resp.text();
+    for (const linha of String(txt || '').split('\n')) {
+      let o = null, p = null;
+      try { o = JSON.parse(linha); } catch { continue; }
+      if (!o || o.event !== 'message' || !o.message) continue;
+      try { p = JSON.parse(o.message); } catch { continue; }
+      if (p.t === 'b' && p.b) {
+        // so vibra/notifica se o agendamento for recente (menos de 10 min)
+        const fresco = Date.now() - (Date.parse(p.b.createdAt) || 0) < 10 * 60 * 1000;
+        registrar(p.b, { avisaNovo: fresco });
+      } else if (p.t === 'p' && p.b) registrar(p.b, { avisaNovo: false });
+      else if (p.t === 'e' && p.b && p.b.id) registrar(p.b, { avisaNovo: false });
+      else if (p.t === 'd' && p.b && p.b.id) removerLocal(p.b.id, { avisa: false });
+      else if (p.t === 's' && p.s && Number(p.s.ts || 0) > Number(statusLoja.ts || 0)) {
+        statusLoja = p.s;
+        try { localStorage.setItem(LS_ST, JSON.stringify(statusLoja)); } catch { /* ignora */ }
+        pintarStatus();
+      }
+    }
+  } catch { /* sem internet — tenta de novo no proximo ciclo */ }
+}
+
+// ============================================================
+//  NATAL: neve e presente no app do cliente (voce liga aqui)
+// ============================================================
+function pintarNatal() {
+  const tn = $('tNeve'), tp = $('tPresente');
+  if (tn) { tn.textContent = statusLoja.neve ? '🔆 Ligado' : '⚫ Desligado'; tn.classList.toggle('on', !!statusLoja.neve); }
+  if (tp) { tp.textContent = statusLoja.presente ? '🔆 Ligado' : '⚫ Desligado'; tp.classList.toggle('on', !!statusLoja.presente); }
+}
+
+async function ligarNatal(campo, valor) {
+  statusLoja = { ...statusLoja, [campo]: valor, ts: Date.now() };
+  try { localStorage.setItem(LS_ST, JSON.stringify(statusLoja)); } catch { /* ignora */ }
+  pintarNatal();
+  // o app do cliente liga/desliga NA HORA pela internet
+  publicarCanal({ t: 's', s: statusLoja });
+  try {
+    await chamarApi('/api/painel/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinAtual(), [campo]: valor }),
+    });
+  } catch { /* PC desligado — o aviso pela internet ja saiu */ }
+}
+if ($('tNeve')) $('tNeve').onclick = () => ligarNatal('neve', !statusLoja.neve);
+if ($('tPresente')) $('tPresente').onclick = () => ligarNatal('presente', !statusLoja.presente);
+
+// ============================================================
 //  INICIO
 // ============================================================
 window.addEventListener('load', () => {
@@ -532,7 +707,9 @@ window.addEventListener('load', () => {
   pintarLista();        // agendamentos salvos aparecem na hora
   atualizarPainel();    // (extra: estado do Pix vindo do PC)
   ligarCanal();         // canal da internet: agendamentos ENTAM sozinhos
+  pegarAtrasados();     // recupera o que chegou com o app fechado
   setInterval(atualizarPainel, 60000);
+  setInterval(pegarAtrasados, 60000);   // de minuto em minuto cobre furos do canal
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       pintarLista();

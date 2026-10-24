@@ -59,6 +59,18 @@
     .btn-pago{border:1px solid var(--green);background:rgba(34,197,94,.10);color:var(--green);
       font-weight:800;font-size:11px;border-radius:8px;padding:6px 8px;cursor:pointer;white-space:nowrap}
     .btn-pago:active{background:var(--green);color:#111}
+    .mini-acoes{display:flex;gap:6px;margin-top:5px}
+    .btn-mini{border:1px solid var(--border);background:transparent;color:var(--muted);
+      font-weight:700;font-size:11px;border-radius:8px;padding:5px 8px;cursor:pointer;white-space:nowrap}
+    .btn-mini:active{border-color:var(--gold);color:var(--gold)}
+    .btn-mini.perigo:active{border-color:var(--red);color:var(--red)}
+    /* linhas liga/desliga nos ajustes (neve, presente de natal) */
+    .linha-cfg{display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#141418}
+    .linha-cfg span{font-size:13px;font-weight:700}
+    .toggle{border:1px solid var(--border);background:transparent;color:var(--muted);
+      font-weight:800;font-size:12px;border-radius:999px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+    .toggle.on{border-color:var(--green);color:var(--green);background:rgba(34,197,94,.12)}
     .badge{font-size:11px;font-weight:800;border-radius:999px;padding:4px 9px;white-space:nowrap}
     .badge.pago{background:rgba(34,197,94,.15);color:var(--green)}
     .badge.espera{background:rgba(245,158,11,.15);color:#f59e0b}
@@ -138,6 +150,14 @@
       <input id="inpPin" placeholder="1234" inputmode="numeric"
              style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box">
       <p class="tiny" id="cfgAviso" style="margin-top:8px">—</p>
+      <div class="linha-cfg">
+        <span>❄️ Neve no app do cliente</span>
+        <button id="tNeve" class="toggle">⚫ Desligado</button>
+      </div>
+      <div class="linha-cfg">
+        <span>🎁 Presente de Natal no app do cliente</span>
+        <button id="tPresente" class="toggle">⚫ Desligado</button>
+      </div>
       <button id="btnSalvarCfg" class="btn btn-gold btn-block">💾 Salvar</button>
       <button id="btnVerificarUpdate" class="btn btn-ghost btn-block">⬇️ Baixar a versão atualizada do APK</button>
       <p class="tiny" id="updStatus">—</p>
@@ -154,6 +174,42 @@
       <div id="updNotas" class="tiny" style="text-align:left;margin:10px 0">—</div>
       <button id="btnAtualizar" class="btn btn-gold btn-block">⬇️ Atualizar agora</button>
       <button id="btnDepois" class="btn btn-ghost btn-block">Depois</button>
+    </div>
+  </div>
+
+  <!-- editar agendamento -->
+  <div id="modalEditar" class="modal hidden">
+    <div class="modal-card" style="text-align:left">
+      <h2 style="text-align:center">✏️ Editar agendamento</h2>
+      <p class="tiny" style="text-align:center;margin-bottom:8px">Ao salvar, o agendamento muda na hora no aplicativo e no site do cliente.</p>
+      <label style="font-size:12px;color:var(--muted);display:block;margin-top:10px">Nome do cliente</label>
+      <input id="eNome" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-top:10px">WhatsApp</label>
+      <input id="eFone" inputmode="tel" placeholder="(21) 90000-0000" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box">
+      <label style="font-size:12px;color:var(--muted);display:block;margin-top:10px">Serviço</label>
+      <input id="eServico" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box">
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <div style="flex:1">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Dia</label>
+          <input id="eDia" type="date" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box;color-scheme:dark">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Hora</label>
+          <input id="eHora" type="time" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box;color-scheme:dark">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <div style="flex:1">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Preço (R$)</label>
+          <input id="ePreco" type="number" inputmode="decimal" min="0" step="1" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box">
+        </div>
+        <div style="flex:2">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Observação</label>
+          <input id="eObs" style="width:100%;background:#141418;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:15px;box-sizing:border-box">
+        </div>
+      </div>
+      <button id="btnSalvarEditar" class="btn btn-gold btn-block" style="margin-top:14px">💾 Salvar alterações</button>
+      <button id="btnFecharEditar" class="btn btn-ghost btn-block">Cancelar</button>
     </div>
   </div>
 
